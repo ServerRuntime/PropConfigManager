@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -399,5 +401,70 @@ public class SshService {
 
     private String shellQuote(String s) {
         return "'" + s.replace("'", "'\\''") + "'";
+    }
+
+    // ─── Canlı log izleme ─────────────────────────────────────────────────────
+
+    /**
+     * SSH üzerinden tail -f ile log dosyasını canlı izler.
+     * sudoUser varsa sudo -S -u {sudoUser} tail -f ... olarak çalışır.
+     *
+     * @param lineCallback  her satır için çağrılır
+     * @param stopped       true döndüğünde döngü kesilir (SSE bağlantısı koptuğunda)
+     */
+    public void tailLog(String host, int port, String username, String password,
+                        String sudoUser, String logFile,
+                        Consumer<String> lineCallback,
+                        AtomicBoolean stopped) throws Exception {
+        Session session = openSession(host, port, username, password);
+        try {
+            ChannelExec channel = (ChannelExec) session.openChannel("exec");
+
+            String cmd = (sudoUser != null && !sudoUser.isBlank())
+                    ? "sudo -S -u " + sudoUser + " tail -f \"" + logFile + "\" 2>&1"
+                    : "tail -f \"" + logFile + "\" 2>&1";
+            channel.setCommand(cmd);
+
+            OutputStream stdin  = channel.getOutputStream();
+            InputStream  stdout = channel.getInputStream();
+            channel.connect(timeout);
+
+            if (sudoUser != null && !sudoUser.isBlank()) {
+                stdin.write((password + "\n").getBytes(StandardCharsets.UTF_8));
+                stdin.flush();
+            }
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(stdout, StandardCharsets.UTF_8));
+            char[] buf = new char[4096];
+            StringBuilder lineBuf = new StringBuilder();
+
+            while (!stopped.get() && !channel.isClosed()) {
+                if (stdout.available() > 0) {
+                    int n = reader.read(buf);
+                    if (n > 0) {
+                        lineBuf.append(buf, 0, n);
+                        // Tam satırları gönder, yarım kalan sonraki okumaya kalsın
+                        int lastNl = lineBuf.lastIndexOf("\n");
+                        if (lastNl >= 0) {
+                            String[] lines = lineBuf.substring(0, lastNl).split("\n", -1);
+                            for (String line : lines) {
+                                // sudo prompt satırını atla
+                                if (!line.contains("[sudo]") && !line.contains("password for")) {
+                                    lineCallback.accept(line);
+                                }
+                            }
+                            lineBuf = new StringBuilder(lineBuf.substring(lastNl + 1));
+                        }
+                    }
+                } else {
+                    Thread.sleep(100);
+                }
+            }
+
+            channel.disconnect();
+        } finally {
+            session.disconnect();
+        }
     }
 }

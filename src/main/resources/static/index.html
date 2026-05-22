@@ -261,6 +261,36 @@
     .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 9px; }
     .val-preview { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: monospace; font-size: 12px; color: var(--key-color); word-break: break-all; margin-top: 6px; max-height: 70px; overflow-y: auto; }
 
+    /* ─── TABS ─── */
+    .tab-bar { display: flex; background: var(--card); border-bottom: 1px solid var(--border); padding: 0 20px; flex-shrink: 0; }
+    .tab-bar.hidden { display: none; }
+    .tab-btn { height: 42px; padding: 0 18px; border: none; background: none; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2.5px solid transparent; transition: all .15s; font-family: inherit; display: flex; align-items: center; gap: 7px; }
+    .tab-btn:hover { color: var(--text); background: var(--card2); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ─── LOG AREA ─── */
+    .log-area { display: none; flex-direction: column; overflow: hidden; flex: 1; }
+    .log-area.visible { display: flex; }
+    .log-toolbar { padding: 9px 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+    .log-status { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+    .log-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-mid); flex-shrink: 0; transition: background .3s; }
+    .log-dot.connected { background: #4ade80; box-shadow: 0 0 6px #4ade80; animation: blink 2s infinite; }
+    .log-dot.error { background: var(--danger); box-shadow: none; animation: none; }
+    .log-status-text { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-count { font-size: 11px; color: var(--text-muted); background: var(--card2); padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; }
+    .log-output-wrap { flex: 1; overflow: hidden; background: #0d1117; }
+    .log-output { height: 100%; overflow-y: auto; padding: 12px 16px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.65; color: #c9d1d9; white-space: pre-wrap; word-break: break-all; }
+    .log-output::-webkit-scrollbar { width: 6px; }
+    .log-output::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 6px; }
+    .log-line { display: block; }
+    .log-line.err  { color: #ff7b72; }
+    .log-line.warn { color: #e3b341; }
+    .log-line.info { color: #79c0ff; }
+    .log-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: rgba(255,255,255,.2); text-align: center; gap: 12px; }
+    .log-empty i { font-size: 40px; }
+    .log-empty p { font-size: 13px; }
+
     /* ─── SPINNER ─── */
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
     .spinner.dark { border-color: rgba(0,0,0,.12); border-top-color: var(--accent); }
@@ -403,14 +433,24 @@
       </div>
 
       <!-- Properties aksiyonları -->
-      <div style="display:flex;gap:6px;margin-left:8px;padding-left:16px;border-left:1px solid var(--border)">
+      <div id="propsActions" style="display:flex;gap:6px;margin-left:8px;padding-left:16px;border-left:1px solid var(--border)">
         <button class="btn btn-outline btn-sm" onclick="refreshProps()"><i class="fas fa-sync-alt"></i> Yenile</button>
         <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="fas fa-plus"></i> Ekle</button>
       </div>
     </div>
 
-    <!-- Body -->
-    <div class="content-body">
+    <!-- Tab Bar -->
+    <div class="tab-bar hidden" id="tabBar">
+      <button class="tab-btn active" id="tabBtnProps" onclick="switchTab('props')">
+        <i class="fas fa-list-ul"></i> Properties
+      </button>
+      <button class="tab-btn" id="tabBtnLogs" onclick="switchTab('logs')">
+        <i class="fas fa-terminal"></i> Loglar
+      </button>
+    </div>
+
+    <!-- Properties Tab -->
+    <div class="content-body" id="propsTab">
       <div class="empty-state" id="emptyState">
         <i class="fas fa-server"></i>
         <h3>Bir sunucu seçin</h3>
@@ -439,7 +479,39 @@
           </table>
         </div>
       </div>
-    </div>
+    </div><!-- /propsTab -->
+
+    <!-- Logs Tab -->
+    <div class="log-area" id="logTab">
+      <div class="log-toolbar">
+        <div class="log-status">
+          <div class="log-dot" id="logDot"></div>
+          <span class="log-status-text" id="logStatusText">Bağlı değil</span>
+        </div>
+        <span class="log-count" id="logLineCount">0 satır</span>
+        <button class="btn btn-success btn-sm" id="btnLogConnect" onclick="connectLog()">
+          <i class="fas fa-play"></i> Bağlan
+        </button>
+        <button class="btn btn-danger btn-sm" id="btnLogDisconnect" onclick="disconnectLog()" style="display:none">
+          <i class="fas fa-stop"></i> Bağlantıyı Kes
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="clearLog()">
+          <i class="fas fa-eraser"></i> Temizle
+        </button>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;user-select:none">
+          <input type="checkbox" id="autoScroll" checked style="margin:0 4px 0 0"> Otomatik kaydır
+        </label>
+      </div>
+      <div class="log-output-wrap">
+        <div class="log-output" id="logOutput">
+          <div class="log-empty" id="logEmpty">
+            <i class="fas fa-terminal"></i>
+            <p>Bağlan'a tıklayarak canlı log akışını başlatın</p>
+          </div>
+        </div>
+      </div>
+    </div><!-- /logTab -->
+
   </main>
 </div>
 
@@ -458,6 +530,9 @@ const S = {
   editOrigKey:  null,
   deleteKey:    null,
   pendingId:    null,
+  activeTab:    'props',  // 'props' | 'logs'
+  logSource:    null,     // EventSource
+  logLineCount: 0,
 };
 
 // ══════════════════════════════════════════════════════
@@ -514,6 +589,9 @@ async function selectMachine(id) {
 }
 
 async function loadMachine(id) {
+  // Önceki log stream'i kapat
+  disconnectLog();
+
   S.currentId = id;
   renderSidebar();
   const m = S.machines.find(x => x.id === id);
@@ -527,6 +605,15 @@ async function loadMachine(id) {
   document.getElementById('statEnv').textContent = m.environment || 'production';
   document.getElementById('propsBody').innerHTML =
     '<tr class="loading-row"><td colspan="4"><span class="spinner dark"></span> Properties yükleniyor...</td></tr>';
+
+  // Tab bar'ı göster, logs sekmesini logFile'a göre aktif/pasif yap
+  document.getElementById('tabBar').classList.remove('hidden');
+  const tabLogs = document.getElementById('tabBtnLogs');
+  tabLogs.disabled = !m.logFile;
+  tabLogs.title    = !!m.logFile ? '' : 'Bu makine için logFile tanımlı değil';
+
+  // Props sekmesine geç
+  switchTab('props');
 
   setDot(id, 'checking');
   setSvcBadge('checking');
@@ -850,6 +937,117 @@ function toast(msg, type='info', dur=3500) {
   el.innerHTML = `<i class="fas ${TICONS[type]} toast-icon"></i><span class="toast-msg">${esc(msg)}</span><button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>`;
   c.appendChild(el);
   setTimeout(() => { el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, dur);
+}
+
+// ══════════════════════════════════════════════════════
+// TAB SWITCH
+// ══════════════════════════════════════════════════════
+function switchTab(tab) {
+  S.activeTab = tab;
+  const isProps = tab === 'props';
+
+  document.getElementById('propsTab').style.display    = isProps ? '' : 'none';
+  document.getElementById('logTab').classList.toggle('visible', !isProps);
+  document.getElementById('tabBtnProps').classList.toggle('active', isProps);
+  document.getElementById('tabBtnLogs').classList.toggle('active', !isProps);
+  document.getElementById('propsActions').style.display = isProps ? 'flex' : 'none';
+}
+
+// ══════════════════════════════════════════════════════
+// CANLI LOG — SSE
+// ══════════════════════════════════════════════════════
+function connectLog() {
+  if (S.logSource) return;
+  const m = S.machines.find(x => x.id === S.currentId);
+  if (!m || !m.logFile) { toast('Bu makine için logFile tanımlı değil', 'warning'); return; }
+
+  clearLog();
+  const params = new URLSearchParams(resolveCredsFor(S.currentId));
+  const source = new EventSource(`/api/logs/${S.currentId}?${params}`);
+  S.logSource  = source;
+
+  setLogDot('checking');
+  setLogText('Bağlanıyor…');
+  document.getElementById('btnLogConnect').style.display    = 'none';
+  document.getElementById('btnLogDisconnect').style.display = '';
+
+  source.onopen = () => {
+    setLogDot('connected');
+    setLogText(`Bağlı — ${m.logFile}`);
+    // Placeholder'ı kaldır
+    const emp = document.getElementById('logEmpty');
+    if (emp) emp.remove();
+  };
+
+  source.onmessage = (e) => {
+    S.logLineCount++;
+    appendLogLine(e.data);
+    document.getElementById('logLineCount').textContent = S.logLineCount.toLocaleString() + ' satır';
+  };
+
+  source.addEventListener('sse-error', (e) => {
+    appendLogLine('⚠ Sunucu hatası: ' + e.data, 'err');
+    _logDisconnect();
+  });
+
+  source.onerror = () => {
+    setLogDot('error');
+    setLogText('Bağlantı kesildi');
+    _logDisconnect();
+  };
+}
+
+function disconnectLog() {
+  if (!S.logSource) return;
+  S.logSource.close();
+  _logDisconnect();
+}
+
+function _logDisconnect() {
+  S.logSource = null;
+  setLogDot('');
+  setLogText('Bağlı değil');
+  document.getElementById('btnLogConnect').style.display    = '';
+  document.getElementById('btnLogDisconnect').style.display = 'none';
+}
+
+function clearLog() {
+  document.getElementById('logOutput').innerHTML =
+    '<div class="log-empty" id="logEmpty"><i class="fas fa-terminal"></i><p>Bağlan\'a tıklayarak canlı log akışını başlatın</p></div>';
+  S.logLineCount = 0;
+  document.getElementById('logLineCount').textContent = '0 satır';
+}
+
+function setLogDot(cls) {
+  const d = document.getElementById('logDot');
+  d.className = 'log-dot' + (cls ? ' ' + cls : '');
+}
+
+function setLogText(t) {
+  document.getElementById('logStatusText').textContent = t;
+}
+
+function appendLogLine(text, forceClass) {
+  const emp = document.getElementById('logEmpty');
+  if (emp) emp.remove();
+
+  const el = document.createElement('span');
+  el.className = 'log-line';
+  const u = text.toUpperCase();
+  const cls = forceClass
+    || (u.includes('ERROR') || u.includes('EXCEPTION') || u.includes('FATAL') ? 'err'
+      : u.includes('WARN') ? 'warn'
+      : u.includes(' INFO ') || u.includes('[INFO]') ? 'info'
+      : '');
+  if (cls) el.classList.add(cls);
+  el.textContent = text + '\n';
+
+  const out = document.getElementById('logOutput');
+  out.appendChild(el);
+
+  if (document.getElementById('autoScroll').checked) {
+    out.scrollTop = out.scrollHeight;
+  }
 }
 
 // Klavye kısayolları

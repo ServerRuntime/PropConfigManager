@@ -7,8 +7,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *
  * username / password : opsiyonel — varsa arayüz sormaz.
  * serviceName         : opsiyonel — varsayılan "flexcity" (systemctl için).
- * sudoUser            : opsiyonel — dosya okuma/yazma için sudo ile geçilecek
- *                       kullanıcı. Örn: "flexcity" → sudo -S -u flexcity cat /path
+ * sudoUser            : opsiyonel — dosya okuma/yazma ve log için sudo kullanıcısı.
+ * logFile             : opsiyonel — tail -f ile izlenecek log dosyasının tam yolu.
  */
 public class Machine {
 
@@ -25,6 +25,12 @@ public class Machine {
      * Boşsa sudo kullanılmaz, SSH kullanıcısıyla doğrudan erişilir.
      */
     private String sudoUser;
+
+    /**
+     * Opsiyonel: canlı log izleme için dosya yolu.
+     * Örn: /home/flexcity/java/appservers/apache-tomcat-9.0.73/logs/catalina.out
+     */
+    private String logFile;
 
     /** JSON'dan okunur, dışarıya yazılmaz */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
@@ -61,6 +67,13 @@ public class Machine {
 
     public boolean hasSudoUser() {
         return sudoUser != null && !sudoUser.isBlank();
+    }
+
+    public String getLogFile()                { return logFile; }
+    public void   setLogFile(String logFile)  { this.logFile = logFile; }
+
+    public boolean hasLogFile() {
+        return logFile != null && !logFile.isBlank();
     }
 
     public String getUsername()              { return username; }
