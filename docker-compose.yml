@@ -1,0 +1,19 @@
+services:
+  config-manager:
+    build: .
+    image: flexcity-config-manager:1.0.0
+    container_name: flexcity-config-manager
+    ports:
+      - "5050:5050"
+    volumes:
+      # machines.json dışarıdan yönetilir — değiştiriniz ve container'ı restart edin
+      - ./machines.json:/app/machines.json:rw
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Istanbul
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5050/api/machines || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

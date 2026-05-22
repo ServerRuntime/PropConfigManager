@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlexCity Config Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    /* ─── DARK MODE FIRST ──────────────────────────────────────────────────── */
+    :root {
+      --navy:        #0d1b2a;
+      --navy-light:  #1b2e45;
+      --navy-mid:    #243b55;
+      --accent:      #2563eb;
+      --accent-h:    #1d4ed8;
+      --accent-soft: #dbeafe;
+      --accent-text: #1e40af;
+      --success:     #16a34a;
+      --success-bg:  #dcfce7;
+      --success-text:#15803d;
+      --warn:        #d97706;
+      --warn-bg:     #fef3c7;
+      --danger:      #dc2626;
+      --danger-bg:   #fee2e2;
+      --danger-text: #b91c1c;
+
+      /* Light mode surfaces */
+      --bg:          #f1f5f9;
+      --card:        #ffffff;
+      --card2:       #f8fafc;
+      --text:        #1e293b;
+      --text-muted:  #64748b;
+      --border:      #e2e8f0;
+      --border-mid:  #cbd5e1;
+
+      /* Key column — readable in both modes */
+      --key-color:   #1e40af;
+      --val-chip-bg: #f1f5f9;
+      --val-chip-fg: #334155;
+
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.05);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:          #0f172a;
+        --card:        #1e293b;
+        --card2:       #0f172a;
+        --text:        #f1f5f9;
+        --text-muted:  #94a3b8;
+        --border:      #334155;
+        --border-mid:  #475569;
+        --accent-soft: #1e3a5f;
+        --accent-text: #93c5fd;
+        --success-bg:  #14532d;
+        --success-text:#86efac;
+        --warn-bg:     #451a03;
+        --danger-bg:   #450a0a;
+        --danger-text: #fca5a5;
+        --key-color:   #7dd3fc;   /* mavi — karanlık arka planda net okunur */
+        --val-chip-bg: #0f172a;
+        --val-chip-fg: #cbd5e1;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background .2s, color .2s; }
+
+    /* ─── OVERLAY ─── */
+    .overlay { position: fixed; inset: 0; background: rgba(13,27,42,.72); backdrop-filter: blur(6px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .overlay.hidden { display: none; }
+
+    /* ─── CREDENTIAL MODAL ─── */
+    .cred-card { background: var(--card); border-radius: 16px; width: 400px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); animation: slideUp .28s ease; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .cred-header { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); padding: 26px 28px 20px; display: flex; align-items: center; gap: 14px; }
+    .cred-icon { width: 42px; height: 42px; background: var(--accent); border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cred-icon i { color: #fff; font-size: 18px; }
+    .cred-header h2 { color: #fff; font-size: 15px; font-weight: 700; }
+    .cred-header p  { color: rgba(255,255,255,.5); font-size: 12px; margin-top: 2px; }
+    .cred-body { padding: 22px 28px 26px; }
+    .cred-error { background: var(--danger-bg); border: 1px solid rgba(239,68,68,.3); color: var(--danger-text); border-radius: 8px; padding: 11px 13px; font-size: 13px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .cred-error.hidden { display: none; }
+
+    /* ─── FORMS ─── */
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 5px; }
+    .input-wrap { position: relative; }
+    .input-wrap > i:first-child { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; pointer-events: none; }
+    .input-wrap input {
+      width: 100%; height: 42px; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 0 12px 0 36px; font-size: 14px; font-family: inherit;
+      background: var(--card2); color: var(--text); outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+    .toggle-pw { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 4px; }
+
+    /* ─── BUTTONS ─── */
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; height: 38px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all .15s; font-family: inherit; white-space: nowrap; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled)  { background: var(--accent-h); }
+    .btn-success  { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled)  { background: #15803d; }
+    .btn-danger   { background: var(--danger);  color: #fff; }
+    .btn-danger:hover:not(:disabled)   { background: #b91c1c; }
+    .btn-outline  { background: transparent; border: 1.5px solid var(--border); color: var(--text-muted); }
+    .btn-outline:hover:not(:disabled)  { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .btn-ghost    { background: transparent; border: none; color: var(--text-muted); }
+    .btn-ghost:hover:not(:disabled)    { color: var(--danger); background: var(--danger-bg); }
+    .btn-warn     { background: var(--warn); color: #fff; }
+    .btn-warn:hover:not(:disabled)     { background: #b45309; }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: 12px; border-radius: 7px; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    /* ─── HEADER ─── */
+    .app-header { height: 58px; flex-shrink: 0; background: linear-gradient(90deg, var(--navy) 0%, var(--navy-mid) 100%); display: flex; align-items: center; padding: 0 20px; gap: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.3); z-index: 100; }
+    .hdr-logo { width: 32px; height: 32px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+    .hdr-logo i { color: #fff; font-size: 15px; }
+    .hdr-title { color: #fff; font-size: 14px; font-weight: 700; }
+    .hdr-sub   { color: rgba(255,255,255,.4); font-size: 11px; display: block; }
+
+    /* ─── LAYOUT ─── */
+    .app-body { flex: 1; display: flex; overflow: hidden; }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar { width: 268px; flex-shrink: 0; background: var(--navy-light); display: flex; flex-direction: column; overflow: hidden; }
+    .sb-lbl  { padding: 14px 14px 6px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,.3); }
+    .sb-search { padding: 0 10px 10px; }
+    .sb-search input { width: 100%; height: 32px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 0 10px 0 30px; color: rgba(255,255,255,.85); font-size: 12px; font-family: inherit; outline: none; transition: border-color .2s; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,.3)' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; }
+    .sb-search input::placeholder { color: rgba(255,255,255,.28); }
+    .sb-search input:focus { border-color: var(--accent); }
+
+    .machine-list { flex: 1; overflow-y: auto; padding: 0 6px 12px; }
+    .machine-list::-webkit-scrollbar { width: 3px; }
+    .machine-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+    .mi { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 9px; cursor: pointer; transition: background .14s; margin-bottom: 2px; }
+    .mi:hover  { background: rgba(255,255,255,.07); }
+    .mi.active { background: var(--accent); }
+    .mi-icon { width: 30px; height: 30px; border-radius: 7px; background: rgba(255,255,255,.07); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .mi-icon i { color: rgba(255,255,255,.45); font-size: 13px; }
+    .mi.active .mi-icon { background: rgba(255,255,255,.18); }
+    .mi.active .mi-icon i { color: #fff; }
+    .mi-info { flex: 1; min-width: 0; }
+    .mi-name { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.88); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mi.active .mi-name { color: #fff; }
+    .mi-host { font-size: 10.5px; color: rgba(255,255,255,.38); font-family: monospace; }
+    .mi.active .mi-host { color: rgba(255,255,255,.65); }
+    .mi-badges { display: flex; gap: 4px; margin-top: 2px; }
+    .env-badge { font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; border: 1px solid; border-radius: 4px; padding: 0 4px; line-height: 14px; }
+    .env-badge.production  { color: #86efac; border-color: rgba(134,239,172,.3); }
+    .env-badge.staging     { color: #fcd34d; border-color: rgba(252,211,77,.3); }
+    .env-badge.development { color: #93c5fd; border-color: rgba(147,197,253,.3); }
+    .mi.active .env-badge  { color: rgba(255,255,255,.8); border-color: rgba(255,255,255,.25); }
+    .key-badge { font-size: 9px; background: rgba(37,99,235,.4); color: #93c5fd; border-radius: 4px; padding: 0 5px; line-height: 14px; font-weight: 600; }
+    .mi.active .key-badge  { background: rgba(255,255,255,.25); color: #fff; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: background .3s; }
+    .status-dot.online   { background: #4ade80; box-shadow: 0 0 5px #4ade80; }
+    .status-dot.offline  { background: #f87171; }
+    .status-dot.checking { background: #fbbf24; animation: blink 1s infinite; }
+    .status-dot.unknown  { background: rgba(255,255,255,.2); }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+
+    /* ─── MAIN ─── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Content bar */
+    .content-bar { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; gap: 10px; }
+    .cb-icon { width: 36px; height: 36px; background: var(--accent-soft); border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cb-icon i { color: var(--accent-text); font-size: 16px; }
+    .cb-text h2 { font-size: 14px; font-weight: 700; color: var(--text); }
+    .cb-text p  { font-size: 11px; color: var(--text-muted); }
+
+    /* Servis durum bölümü */
+    .svc-block { display: flex; align-items: center; gap: 8px; margin-left: auto; padding-left: 16px; border-left: 1px solid var(--border); }
+    .svc-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .svc-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 10px; transition: all .2s; }
+    .svc-badge.active   { background: var(--success-bg); color: var(--success-text); }
+    .svc-badge.inactive { background: var(--danger-bg);  color: var(--danger-text); }
+    .svc-badge.failed   { background: var(--danger-bg);  color: var(--danger-text); }
+    .svc-badge.unknown  { background: var(--card2); color: var(--text-muted); border: 1px solid var(--border); }
+    .svc-badge.checking { background: var(--warn-bg); color: var(--warn); }
+    .svc-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .svc-badge.active   .svc-dot { background: var(--success); box-shadow: 0 0 4px var(--success); }
+    .svc-badge.inactive .svc-dot { background: var(--danger); }
+    .svc-badge.failed   .svc-dot { background: var(--danger); }
+    .svc-badge.unknown  .svc-dot { background: var(--text-muted); }
+    .svc-badge.checking .svc-dot { background: var(--warn); animation: blink .8s infinite; }
+
+    .svc-actions { display: flex; gap: 5px; }
+
+    /* Content body */
+    .content-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .content-body::-webkit-scrollbar { width: 5px; }
+    .content-body::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 5px; }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
+    .empty-state i { font-size: 50px; color: var(--border-mid); margin-bottom: 18px; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text-muted); }
+    .empty-state p  { font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+
+    /* ─── PROPERTIES AREA ─── */
+    .props-area { display: none; }
+    .props-area.visible { display: block; }
+
+    .stats-bar { display: flex; gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; flex: 1; box-shadow: var(--shadow); }
+    .stat-val  { font-size: 20px; font-weight: 700; color: var(--text); }
+    .stat-lbl  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .props-toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
+    .psearch { flex: 1; position: relative; }
+    .psearch i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px; pointer-events: none; }
+    .psearch input { width: 100%; height: 36px; border: 1.5px solid var(--border); border-radius: 8px; padding: 0 12px 0 34px; font-size: 13px; font-family: inherit; background: var(--card); color: var(--text); outline: none; transition: border-color .2s; }
+    .psearch input:focus { border-color: var(--accent); }
+
+    /* ─── TABLE ─── */
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--card2); border-bottom: 1.5px solid var(--border); }
+    thead th { padding: 10px 14px; text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); }
+    thead th:last-child { text-align: right; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--card2); }
+    tbody td { padding: 10px 14px; font-size: 13px; vertical-align: middle; }
+
+    /* Key kolonu — light'ta koyu mavi, dark'ta açık mavi */
+    .td-key {
+      font-family: 'Courier New', monospace;
+      font-size: 12.5px;
+      color: var(--key-color);
+      font-weight: 600;
+      max-width: 240px;
+      word-break: break-all;
+    }
+    .td-val { max-width: 360px; word-break: break-all; }
+    .val-chip { font-family: 'Courier New', monospace; background: var(--val-chip-bg); color: var(--val-chip-fg); padding: 2px 7px; border-radius: 5px; font-size: 12px; display: inline-block; }
+    .td-idx { color: var(--text-muted); font-size: 11px; font-family: monospace; width: 38px; }
+    .td-act { text-align: right; }
+    .act-row { display: flex; gap: 5px; justify-content: flex-end; }
+    .loading-row td { text-align: center; padding: 44px; color: var(--text-muted); font-size: 13px; }
+
+    /* ─── EDIT / DELETE MODAL ─── */
+    .modal-card { background: var(--card); border-radius: 14px; width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,.35); animation: slideUp .25s ease; overflow: hidden; border: 1px solid var(--border); }
+    .modal-card.sm { width: 400px; }
+    .modal-head { padding: 18px 22px 0; display: flex; align-items: center; gap: 11px; }
+    .modal-icon { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .modal-icon.blue { background: var(--accent-soft); color: var(--accent-text); }
+    .modal-icon.red  { background: var(--danger-bg);   color: var(--danger-text); }
+    .modal-icon i { font-size: 16px; }
+    .modal-head h3 { font-size: 15px; font-weight: 700; color: var(--text); }
+    .modal-head p  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .modal-body { padding: 18px 22px; }
+    .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 9px; }
+    .val-preview { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: monospace; font-size: 12px; color: var(--key-color); word-break: break-all; margin-top: 6px; max-height: 70px; overflow-y: auto; }
+
+    /* ─── SPINNER ─── */
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+    .spinner.dark { border-color: rgba(0,0,0,.12); border-top-color: var(--accent); }
+    @media (prefers-color-scheme: dark) { .spinner.dark { border-color: rgba(255,255,255,.15); border-top-color: var(--accent); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── TOAST ─── */
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 9px; }
+    .toast { min-width: 260px; max-width: 360px; background: var(--card); border-radius: 10px; box-shadow: 0 4px 24px rgba(0,0,0,.25); border-left: 4px solid; padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; animation: tIn .28s ease; border: 1px solid var(--border); border-left-width: 4px; }
+    @keyframes tIn { from { transform: translateX(36px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error   { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warn); }
+    .toast.info    { border-left-color: var(--accent); }
+    .toast-icon { font-size: 15px; margin-top: 1px; }
+    .toast.success .toast-icon { color: var(--success); }
+    .toast.error   .toast-icon { color: var(--danger); }
+    .toast.warning .toast-icon { color: var(--warn); }
+    .toast.info    .toast-icon { color: var(--accent); }
+    .toast-msg { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; }
+    .toast-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ KİMLİK MODALI ══════════════ -->
+<div class="overlay hidden" id="credOverlay">
+  <div class="cred-card">
+    <div class="cred-header">
+      <div class="cred-icon"><i class="fas fa-lock"></i></div>
+      <div>
+        <h2 id="credTitle">Kimlik Doğrulama</h2>
+        <p id="credSub">Bu sunucu için giriş bilgisi gerekli</p>
+      </div>
+    </div>
+    <div class="cred-body">
+      <div class="cred-error hidden" id="credError">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="credErrorMsg"></span>
+      </div>
+      <div class="form-group">
+        <label>Kullanıcı Adı</label>
+        <div class="input-wrap"><i class="fas fa-user"></i><input type="text" id="credUser" placeholder="admin" autocomplete="username" /></div>
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Şifre</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="credPass" placeholder="••••••••" autocomplete="current-password" />
+          <button class="toggle-pw" onclick="togglePw('credPass',this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div style="display:flex;gap:9px">
+        <button class="btn btn-outline btn-full" style="flex:1" onclick="closeCredModal()">İptal</button>
+        <button class="btn btn-primary btn-full" style="flex:2" id="credLoginBtn" onclick="submitCreds()">
+          <i class="fas fa-plug"></i> Bağlan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ EKLE / DÜZENLE MODALI ══════════════ -->
+<div class="overlay hidden" id="editOverlay">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-icon blue" id="editIcon"><i class="fas fa-plus"></i></div>
+      <div><h3 id="editTitle">Yeni Property</h3><p id="editSub">Anahtar-değer çifti girin</p></div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Anahtar (Key)</label>
+        <div class="input-wrap"><i class="fas fa-key"></i><input type="text" id="editKey" placeholder="örn: server.port" /></div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Değer (Value)</label>
+        <div class="input-wrap"><i class="fas fa-equals"></i><input type="text" id="editVal" placeholder="örn: 8080" /></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('editOverlay')">İptal</button>
+      <button class="btn btn-primary" id="editSaveBtn" onclick="saveEdit()"><i class="fas fa-save"></i> Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SİL MODALI ══════════════ -->
+<div class="overlay hidden" id="deleteOverlay">
+  <div class="modal-card sm">
+    <div class="modal-head">
+      <div class="modal-icon red"><i class="fas fa-trash"></i></div>
+      <div><h3>Property Sil</h3><p>Bu işlem geri alınamaz</p></div>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:6px">Silinecek anahtar:</p>
+      <div class="val-preview" id="delKeyPreview"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('deleteOverlay')">İptal</button>
+      <button class="btn btn-danger" id="delConfirmBtn" onclick="confirmDelete()"><i class="fas fa-trash"></i> Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<header class="app-header">
+  <div class="hdr-logo"><i class="fas fa-sliders-h"></i></div>
+  <div><div class="hdr-title">FlexCity Config Manager</div><sub class="hdr-sub">Remote Properties Yönetim Sistemi</sub></div>
+</header>
+
+<div class="app-body">
+  <aside class="sidebar">
+    <div class="sb-lbl">Sunucular</div>
+    <div class="sb-search"><input type="text" id="sbSearch" placeholder="Sunucu ara..." oninput="renderSidebar()" /></div>
+    <div class="machine-list" id="machineList"></div>
+  </aside>
+
+  <main class="main">
+    <!-- Content Bar -->
+    <div class="content-bar" id="contentBar" style="display:none">
+      <div class="cb-icon"><i class="fas fa-server"></i></div>
+      <div class="cb-text">
+        <h2 id="cbName">-</h2>
+        <p id="cbHost">-</p>
+      </div>
+
+      <!-- Servis kontrol -->
+      <div class="svc-block">
+        <span class="svc-label" id="svcLabel">Servis:</span>
+        <span class="svc-badge unknown" id="svcBadge">
+          <span class="svc-dot"></span>
+          <span id="svcBadgeText">—</span>
+        </span>
+        <div class="svc-actions">
+          <button class="btn btn-success btn-sm" id="btnStart"   onclick="serviceAction('start')"   title="Başlat"><i class="fas fa-play"></i> Başlat</button>
+          <button class="btn btn-danger  btn-sm" id="btnStop"    onclick="serviceAction('stop')"    title="Durdur"><i class="fas fa-stop"></i> Durdur</button>
+          <button class="btn btn-warn    btn-sm" id="btnRestart" onclick="serviceAction('restart')" title="Yeniden Başlat"><i class="fas fa-redo"></i> Restart</button>
+          <button class="btn btn-outline btn-sm" onclick="fetchServiceStatus()"><i class="fas fa-sync-alt"></i></button>
+        </div>
+      </div>
+
+      <!-- Properties aksiyonları -->
+      <div style="display:flex;gap:6px;margin-left:8px;padding-left:16px;border-left:1px solid var(--border)">
+        <button class="btn btn-outline btn-sm" onclick="refreshProps()"><i class="fas fa-sync-alt"></i> Yenile</button>
+        <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="fas fa-plus"></i> Ekle</button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="content-body">
+      <div class="empty-state" id="emptyState">
+        <i class="fas fa-server"></i>
+        <h3>Bir sunucu seçin</h3>
+        <p>Sol panelden yönetmek istediğiniz sunucuya tıklayın</p>
+      </div>
+
+      <div class="props-area" id="propsArea">
+        <div class="stats-bar">
+          <div class="stat-card"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">Toplam Property</div></div>
+          <div class="stat-card"><div class="stat-val" id="statFiltered">0</div><div class="stat-lbl">Gösterilen</div></div>
+          <div class="stat-card"><div class="stat-val" id="statEnv">-</div><div class="stat-lbl">Ortam</div></div>
+        </div>
+        <div class="props-toolbar">
+          <div class="psearch"><i class="fas fa-search"></i><input type="text" id="propsSearch" placeholder="Key veya value ara..." oninput="renderTable()" /></div>
+          <button class="btn btn-outline btn-sm" onclick="exportProps()"><i class="fas fa-download"></i> Dışa Aktar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:36px">#</th>
+              <th>Anahtar (Key)</th>
+              <th>Değer (Value)</th>
+              <th style="width:112px">İşlemler</th>
+            </tr></thead>
+            <tbody id="propsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DURUM
+// ══════════════════════════════════════════════════════
+const S = {
+  machines:     [],
+  sessionCreds: {},       // { machineId: { username, password } }
+  currentId:    null,
+  properties:   [],
+  editMode:     null,
+  editOrigKey:  null,
+  deleteKey:    null,
+  pendingId:    null,
+};
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+async function init() {
+  try {
+    const res  = await fetch('/api/machines');
+    const data = await res.json();
+    S.machines = data.machines || [];
+    renderSidebar();
+  } catch (e) {
+    toast('Makine listesi alınamadı: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════════════
+function renderSidebar() {
+  const q    = (document.getElementById('sbSearch').value || '').toLowerCase();
+  const list = S.machines.filter(m => m.name.toLowerCase().includes(q) || m.host.includes(q));
+  document.getElementById('machineList').innerHTML = list.map(m => {
+    const unlocked = m.hasCredentials || !!S.sessionCreds[m.id];
+    const active   = m.id === S.currentId;
+    return `
+    <div class="mi ${active ? 'active' : ''}" onclick="selectMachine('${m.id}')">
+      <div class="mi-icon"><i class="fas fa-server"></i></div>
+      <div class="mi-info">
+        <div class="mi-name">${esc(m.name)}</div>
+        <div class="mi-host">${esc(m.host)}:${m.port}</div>
+        <div class="mi-badges">
+          <span class="env-badge ${m.environment || 'production'}">${m.environment || 'prod'}</span>
+          ${unlocked ? '<span class="key-badge"><i class="fas fa-key" style="font-size:8px"></i></span>' : ''}
+        </div>
+      </div>
+      <div class="status-dot unknown" id="dot-${m.id}"></div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// MAKİNE SEÇ
+// ══════════════════════════════════════════════════════
+async function selectMachine(id) {
+  const m = S.machines.find(x => x.id === id);
+  if (!m) return;
+  if (!m.hasCredentials && !S.sessionCreds[id]) {
+    S.pendingId = id;
+    openCredModal(m);
+    return;
+  }
+  await loadMachine(id);
+}
+
+async function loadMachine(id) {
+  S.currentId = id;
+  renderSidebar();
+  const m = S.machines.find(x => x.id === id);
+
+  document.getElementById('contentBar').style.display = 'flex';
+  document.getElementById('cbName').textContent = m.name;
+  document.getElementById('cbHost').textContent = `${m.host}:${m.port}  ·  ${m.description || ''}`;
+  document.getElementById('svcLabel').textContent = `${m.serviceName || 'flexcity'}:`;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('propsArea').classList.add('visible');
+  document.getElementById('statEnv').textContent = m.environment || 'production';
+  document.getElementById('propsBody').innerHTML =
+    '<tr class="loading-row"><td colspan="4"><span class="spinner dark"></span> Properties yükleniyor...</td></tr>';
+
+  setDot(id, 'checking');
+  setSvcBadge('checking');
+  setServiceBtns(false);
+
+  // Properties ve servis durumu paralel çek
+  const [propsOk] = await Promise.all([fetchProperties(id), fetchServiceStatus()]);
+  if (propsOk) setDot(id, 'online');
+  else         setDot(id, 'offline');
+}
+
+async function fetchProperties(id) {
+  const params = new URLSearchParams(resolveCredsFor(id));
+  try {
+    const res  = await fetch(`/api/properties/${id}?${params}`);
+    const data = await res.json();
+    if (data.success) {
+      S.properties = data.properties;
+      renderTable();
+      toast(`${S.machines.find(m=>m.id===id)?.name} yüklendi (${data.properties.length} property)`, 'success');
+      return true;
+    } else {
+      document.getElementById('propsBody').innerHTML =
+        `<tr class="loading-row"><td colspan="4"><i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i>  ${esc(data.error)}</td></tr>`;
+      toast(data.error, 'error');
+      return false;
+    }
+  } catch (e) {
+    toast('Bağlantı hatası: ' + e.message, 'error');
+    return false;
+  }
+}
+
+async function refreshProps() { if (S.currentId) await fetchProperties(S.currentId); }
+
+// ══════════════════════════════════════════════════════
+// SERVİS DURUM / KONTROL
+// ══════════════════════════════════════════════════════
+async function fetchServiceStatus() {
+  if (!S.currentId) return;
+  setSvcBadge('checking');
+  setServiceBtns(false);
+  const params = new URLSearchParams(resolveCredsFor(S.currentId));
+  try {
+    const res  = await fetch(`/api/service/${S.currentId}/status?${params}`);
+    const data = await res.json();
+    if (data.success) {
+      setSvcBadge(data.status);
+      setServiceBtns(true);
+    } else {
+      setSvcBadge('unknown');
+      setServiceBtns(true);
+    }
+  } catch (e) {
+    setSvcBadge('unknown');
+    setServiceBtns(true);
+  }
+}
+
+async function serviceAction(action) {
+  if (!S.currentId) return;
+  const labels = { start:'başlatılıyor', stop:'durduruluyor', restart:'yeniden başlatılıyor' };
+  const icons  = { start:'fa-play',      stop:'fa-stop',      restart:'fa-redo' };
+  const btn    = document.getElementById({ start:'btnStart', stop:'btnStop', restart:'btnRestart' }[action]);
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> ${labels[action]}...`;
+  setServiceBtns(false);
+  setSvcBadge('checking');
+
+  const creds = resolveCredsFor(S.currentId);
+  try {
+    const res  = await fetch(`/api/service/${S.currentId}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(creds)
+    });
+    const data = await res.json();
+    if (data.success) {
+      setSvcBadge(data.status);
+      toast(data.message + ' → ' + statusLabel(data.status), data.status === 'active' ? 'success' : 'warning');
+    } else {
+      setSvcBadge('unknown');
+      toast(data.error, 'error');
+    }
+  } catch (e) {
+    setSvcBadge('unknown');
+    toast('Hata: ' + e.message, 'error');
+  } finally {
+    setServiceBtns(true);
+    const m = S.machines.find(x=>x.id===S.currentId);
+    btn.innerHTML = `<i class="fas ${icons[action]}"></i> ${{start:'Başlat',stop:'Durdur',restart:'Restart'}[action]}`;
+  }
+}
+
+function setSvcBadge(status) {
+  const badge = document.getElementById('svcBadge');
+  const text  = document.getElementById('svcBadgeText');
+  badge.className = 'svc-badge ' + status;
+  text.textContent = statusLabel(status);
+}
+
+function statusLabel(s) {
+  return { active:'Çalışıyor', inactive:'Durdu', failed:'Hata', unknown:'Bilinmiyor', checking:'Kontrol ediliyor…' }[s] || s;
+}
+
+function setServiceBtns(enabled) {
+  ['btnStart','btnStop','btnRestart'].forEach(id => {
+    document.getElementById(id).disabled = !enabled;
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// KİMLİK MODALI
+// ══════════════════════════════════════════════════════
+function openCredModal(m) {
+  document.getElementById('credTitle').textContent = m.name;
+  document.getElementById('credSub').textContent   = `${m.host} — kimlik bilgisi gerekli`;
+  document.getElementById('credUser').value = '';
+  document.getElementById('credPass').value = '';
+  document.getElementById('credError').classList.add('hidden');
+  document.getElementById('credOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('credUser').focus(), 80);
+}
+
+function closeCredModal() {
+  document.getElementById('credOverlay').classList.add('hidden');
+  S.pendingId = null;
+}
+
+async function submitCreds() {
+  const id   = S.pendingId;
+  const user = document.getElementById('credUser').value.trim();
+  const pass = document.getElementById('credPass').value;
+  const btn  = document.getElementById('credLoginBtn');
+
+  if (!user || !pass) { showCredError('Kullanıcı adı ve şifre boş olamaz'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Bağlanıyor...';
+  document.getElementById('credError').classList.add('hidden');
+
+  try {
+    const res  = await fetch('/api/test-connection', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ machineId: id, username: user, password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      S.sessionCreds[id] = { username: user, password: pass };
+      closeCredModal();
+      renderSidebar();
+      await loadMachine(id);
+    } else {
+      showCredError(data.error || 'Kimlik doğrulama başarısız');
+      document.getElementById('credPass').value = '';
+    }
+  } catch (e) {
+    showCredError('Bağlantı kurulamadı: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plug"></i> Bağlan';
+  }
+}
+
+function showCredError(msg) {
+  document.getElementById('credErrorMsg').textContent = msg;
+  document.getElementById('credError').classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════════════
+// TABLO
+// ══════════════════════════════════════════════════════
+function renderTable() {
+  const q        = document.getElementById('propsSearch').value.toLowerCase();
+  const filtered = S.properties.filter(p =>
+    p.key.toLowerCase().includes(q) || p.value.toLowerCase().includes(q)
+  );
+  document.getElementById('statTotal').textContent    = S.properties.length;
+  document.getElementById('statFiltered').textContent = filtered.length;
+
+  if (!filtered.length) {
+    document.getElementById('propsBody').innerHTML =
+      '<tr class="loading-row"><td colspan="4">Sonuç bulunamadı</td></tr>';
+    return;
+  }
+
+  document.getElementById('propsBody').innerHTML = filtered.map((p, i) => `
+    <tr>
+      <td class="td-idx">${i + 1}</td>
+      <td class="td-key">${esc(p.key)}</td>
+      <td class="td-val"><span class="val-chip">${esc(p.value)}</span></td>
+      <td class="td-act">
+        <div class="act-row">
+          <button class="btn btn-outline btn-sm" onclick="openEdit('${ea(p.key)}','${ea(p.value)}')"><i class="fas fa-pen"></i></button>
+          <button class="btn btn-ghost  btn-sm" onclick="openDel('${ea(p.key)}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// EKLE / DÜZENLE
+// ══════════════════════════════════════════════════════
+function openAdd() {
+  S.editMode = 'add'; S.editOrigKey = null;
+  document.getElementById('editKey').value = '';
+  document.getElementById('editVal').value = '';
+  document.getElementById('editKey').readOnly = false;
+  document.getElementById('editTitle').textContent = 'Yeni Property Ekle';
+  document.getElementById('editSub').textContent   = 'Anahtar-değer çifti girin';
+  document.getElementById('editIcon').innerHTML    = '<i class="fas fa-plus"></i>';
+  document.getElementById('editSaveBtn').innerHTML = '<i class="fas fa-plus"></i> Ekle';
+  document.getElementById('editOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('editKey').focus(), 80);
+}
+
+function openEdit(key, value) {
+  S.editMode = 'edit'; S.editOrigKey = key;
+  document.getElementById('editKey').value = key;
+  document.getElementById('editVal').value = value;
+  document.getElementById('editKey').readOnly = true;
+  document.getElementById('editTitle').textContent = 'Property Düzenle';
+  document.getElementById('editSub').textContent   = key;
+  document.getElementById('editIcon').innerHTML    = '<i class="fas fa-pen"></i>';
+  document.getElementById('editSaveBtn').innerHTML = '<i class="fas fa-save"></i> Güncelle';
+  document.getElementById('editOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('editVal').focus(), 80);
+}
+
+async function saveEdit() {
+  const key   = document.getElementById('editKey').value.trim();
+  const value = document.getElementById('editVal').value.trim();
+  const btn   = document.getElementById('editSaveBtn');
+  if (!key) { toast('Key boş olamaz', 'warning'); return; }
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const creds = resolveCredsFor(S.currentId);
+  try {
+    const isAdd = S.editMode === 'add';
+    const url   = isAdd ? `/api/properties/${S.currentId}/add` : `/api/properties/${S.currentId}`;
+    const res   = await fetch(url, {
+      method: isAdd ? 'POST' : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...creds, key, value })
+    });
+    const data = await res.json();
+    if (data.success) { closeM('editOverlay'); await refreshProps(); toast(data.message, 'success'); }
+    else toast(data.error, 'error');
+  } catch (e) { toast('Hata: ' + e.message, 'error'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = S.editMode === 'add' ? '<i class="fas fa-plus"></i> Ekle' : '<i class="fas fa-save"></i> Güncelle';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// SİL
+// ══════════════════════════════════════════════════════
+function openDel(key) {
+  S.deleteKey = key;
+  document.getElementById('delKeyPreview').textContent = key;
+  document.getElementById('deleteOverlay').classList.remove('hidden');
+}
+
+async function confirmDelete() {
+  const btn = document.getElementById('delConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const res  = await fetch(`/api/properties/${S.currentId}`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...resolveCredsFor(S.currentId), key: S.deleteKey })
+    });
+    const data = await res.json();
+    if (data.success) { closeM('deleteOverlay'); await refreshProps(); toast(data.message, 'success'); }
+    else toast(data.error, 'error');
+  } catch (e) { toast('Hata: ' + e.message, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Sil'; }
+}
+
+// ══════════════════════════════════════════════════════
+// YARDIMCILAR
+// ══════════════════════════════════════════════════════
+function resolveCredsFor(id) {
+  const m = S.machines.find(x => x.id === id);
+  if (m && m.hasCredentials) return {};
+  const sess = S.sessionCreds[id];
+  return sess ? { username: sess.username, password: sess.password } : {};
+}
+
+function setDot(id, status) {
+  const el = document.getElementById('dot-' + id);
+  if (el) el.className = 'status-dot ' + status;
+}
+
+function closeM(id)  { document.getElementById(id).classList.add('hidden'); }
+function esc(s)      { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ea(s)       { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.querySelector('i').className = el.type === 'text' ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
+function exportProps() {
+  const lines = S.properties.map(p => `${p.key}=${p.value}`).join('\n');
+  const blob  = new Blob([lines], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const m = S.machines.find(x => x.id === S.currentId);
+  a.download = `${m ? m.name.replace(/\s+/g,'-') : 'props'}-${new Date().toISOString().slice(0,10)}.properties`;
+  a.click();
+  toast('Dışa aktarıldı', 'info');
+}
+
+const TICONS = { success:'fa-check-circle', error:'fa-times-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
+function toast(msg, type='info', dur=3500) {
+  const c  = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `<i class="fas ${TICONS[type]} toast-icon"></i><span class="toast-msg">${esc(msg)}</span><button class="toast-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>`;
+  c.appendChild(el);
+  setTimeout(() => { el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, dur);
+}
+
+// Klavye kısayolları
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') ['editOverlay','deleteOverlay','credOverlay'].forEach(id => closeM(id));
+  if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); if(S.currentId) openAdd(); }
+  if ((e.ctrlKey||e.metaKey) && e.key==='r') { e.preventDefault(); refreshProps(); }
+  if (e.key === 'Enter' && !document.getElementById('credOverlay').classList.contains('hidden')) submitCreds();
+  if (e.key === 'Enter' && !document.getElementById('editOverlay').classList.contains('hidden'))  saveEdit();
+});
+
+init();
+</script>
+</body>
+</html>
