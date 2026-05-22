@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
   <style>
-    /* ─── DARK MODE FIRST ──────────────────────────────────────────────────── */
+    /* ─── THEME TOKENS ─────────────────────────────────────────────────────── */
     :root {
       --navy:        #0d1b2a;
       --navy-light:  #1b2e45;
@@ -25,7 +25,7 @@
       --danger-bg:   #fee2e2;
       --danger-text: #b91c1c;
 
-      /* Light mode surfaces */
+      /* ── LIGHT MODE (default) ── */
       --bg:          #f1f5f9;
       --card:        #ffffff;
       --card2:       #f8fafc;
@@ -33,36 +33,51 @@
       --text-muted:  #64748b;
       --border:      #e2e8f0;
       --border-mid:  #cbd5e1;
-
-      /* Key column — readable in both modes */
       --key-color:   #1e40af;
       --val-chip-bg: #f1f5f9;
       --val-chip-fg: #334155;
-
+      --shadow:      0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.05);
       --radius: 10px;
-      --shadow: 0 1px 3px rgba(0,0,0,.07), 0 4px 12px rgba(0,0,0,.05);
+
+      /* ── LOG AREA (light mode — terminal stays dark) ── */
+      --log-bg:         #0d1117;
+      --log-text:       #e6edf3;
+      --log-err:        #ff7b72;
+      --log-warn:       #e3b341;
+      --log-info:       #79c0ff;
+      --log-scrollbar:  rgba(255,255,255,.15);
+      --log-empty-fg:   rgba(255,255,255,.2);
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg:          #0f172a;
-        --card:        #1e293b;
-        --card2:       #0f172a;
-        --text:        #f1f5f9;
-        --text-muted:  #94a3b8;
-        --border:      #334155;
-        --border-mid:  #475569;
-        --accent-soft: #1e3a5f;
-        --accent-text: #93c5fd;
-        --success-bg:  #14532d;
-        --success-text:#86efac;
-        --warn-bg:     #451a03;
-        --danger-bg:   #450a0a;
-        --danger-text: #fca5a5;
-        --key-color:   #7dd3fc;   /* mavi — karanlık arka planda net okunur */
-        --val-chip-bg: #0f172a;
-        --val-chip-fg: #cbd5e1;
-      }
+    /* ── DARK MODE ── */
+    html[data-theme="dark"] {
+      --bg:          #0f172a;
+      --card:        #1e293b;
+      --card2:       #0f172a;
+      --text:        #f1f5f9;
+      --text-muted:  #94a3b8;
+      --border:      #334155;
+      --border-mid:  #475569;
+      --accent-soft: #1e3a5f;
+      --accent-text: #93c5fd;
+      --success-bg:  #14532d;
+      --success-text:#86efac;
+      --warn-bg:     #451a03;
+      --danger-bg:   #450a0a;
+      --danger-text: #fca5a5;
+      --key-color:   #7dd3fc;
+      --val-chip-bg: #1e293b;
+      --val-chip-fg: #cbd5e1;
+      --shadow:      0 1px 4px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
+
+      /* ── LOG AREA (dark mode — slightly lighter terminal) ── */
+      --log-bg:         #0d1117;
+      --log-text:       #e6edf3;
+      --log-err:        #ff7b72;
+      --log-warn:       #e3b341;
+      --log-info:       #79c0ff;
+      --log-scrollbar:  rgba(255,255,255,.18);
+      --log-empty-fg:   rgba(255,255,255,.22);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -279,22 +294,22 @@
     .log-dot.error { background: var(--danger); box-shadow: none; animation: none; }
     .log-status-text { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .log-count { font-size: 11px; color: var(--text-muted); background: var(--card2); padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; }
-    .log-output-wrap { flex: 1; overflow: hidden; background: #0d1117; }
-    .log-output { height: 100%; overflow-y: auto; padding: 12px 16px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.65; color: #c9d1d9; white-space: pre-wrap; word-break: break-all; }
+    .log-output-wrap { flex: 1; overflow: hidden; background: var(--log-bg); }
+    .log-output { height: 100%; overflow-y: auto; padding: 12px 16px; font-family: 'Courier New', monospace; font-size: 12.5px; line-height: 1.7; color: var(--log-text); white-space: pre-wrap; word-break: break-all; }
     .log-output::-webkit-scrollbar { width: 6px; }
-    .log-output::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 6px; }
+    .log-output::-webkit-scrollbar-thumb { background: var(--log-scrollbar); border-radius: 6px; }
     .log-line { display: block; }
-    .log-line.err  { color: #ff7b72; }
-    .log-line.warn { color: #e3b341; }
-    .log-line.info { color: #79c0ff; }
-    .log-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: rgba(255,255,255,.2); text-align: center; gap: 12px; }
+    .log-line.err  { color: var(--log-err);  font-weight: 600; }
+    .log-line.warn { color: var(--log-warn); }
+    .log-line.info { color: var(--log-info); }
+    .log-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--log-empty-fg); text-align: center; gap: 12px; }
     .log-empty i { font-size: 40px; }
     .log-empty p { font-size: 13px; }
 
     /* ─── SPINNER ─── */
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
-    .spinner.dark { border-color: rgba(0,0,0,.12); border-top-color: var(--accent); }
-    @media (prefers-color-scheme: dark) { .spinner.dark { border-color: rgba(255,255,255,.15); border-top-color: var(--accent); } }
+    .spinner.dark { border-color: rgba(0,0,0,.15); border-top-color: var(--accent); }
+    html[data-theme="dark"] .spinner.dark { border-color: rgba(255,255,255,.15); border-top-color: var(--accent); }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ─── TOAST ─── */
@@ -399,6 +414,14 @@
 <header class="app-header">
   <div class="hdr-logo"><i class="fas fa-sliders-h"></i></div>
   <div><div class="hdr-title">FlexCity Config Manager</div><sub class="hdr-sub">Remote Properties Yönetim Sistemi</sub></div>
+  <div style="margin-left:auto">
+    <button id="themeToggle" onclick="toggleTheme()" title="Tema değiştir"
+      style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;
+             display:flex;align-items:center;justify-content:center;transition:background .15s;">
+      <i class="fas fa-moon"></i>
+    </button>
+  </div>
 </header>
 
 <div class="app-body">
@@ -536,9 +559,33 @@ const S = {
 };
 
 // ══════════════════════════════════════════════════════
+// TEMA
+// ══════════════════════════════════════════════════════
+function initTheme() {
+  const saved      = localStorage.getItem('fcm-theme');
+  const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (preferDark ? 'dark' : 'light'));
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('fcm-theme', theme);
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.innerHTML = theme === 'dark'
+    ? '<i class="fas fa-sun"></i>'
+    : '<i class="fas fa-moon"></i>';
+}
+
+// ══════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════
 async function init() {
+  initTheme();
   try {
     const res  = await fetch('/api/machines');
     const data = await res.json();
