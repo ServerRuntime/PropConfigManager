@@ -12,16 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
-/**
- * SSH üzerinden uzak makine işlemleri.
- *
- * sudoUser desteği:
- *   machines.json'da "sudoUser": "flexcity" varsa dosya okuma/yazma
- *   sudo -S -u flexcity ile yapılır. SSH şifresi aynı zamanda sudo
- *   şifresi olarak kullanılır (sudo su flexcity ile aynı mantık).
- */
 @Service
 public class SshService {
 
@@ -51,13 +42,88 @@ public class SshService {
         s.disconnect();
     }
 
-    // ─── Genel exec ────────────────────────────────────────────────────────────
+    // ─── Temel exec ────────────────────────────────────────────────────────────
 
     /**
-     * Güvenli okuma döngüsü — blocking read() kullanmaz.
-     * channel.isClosed() true olduğunda available() ile kalan baytları drainler,
-     * sonra çıkar. Hızlı biten komutlarda (is-active gibi) askıda kalmaz.
+     * Sudo olmayan genel komut çalıştırıcı.
      */
+    public String execCommand(Session session, String command) throws Exception {
+        log.debug("[SSH] execCommand: {}", command);
+        ChannelExec channel = (ChannelExec) session.openChannel("exec");
+        channel.setCommand(command);
+
+        InputStream stdout = channel.getInputStream();
+        InputStream stderr = channel.getErrStream();
+        channel.connect(timeout);
+
+        ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
+        ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
+        byte[] tmp = new byte[4096];
+        int n;
+
+        while (true) {
+            while (stdout.available() > 0) { n = stdout.read(tmp); if (n > 0) outBuf.write(tmp, 0, n); }
+            while (stderr.available() > 0) { n = stderr.read(tmp); if (n > 0) errBuf.write(tmp, 0, n); }
+            if (channel.isClosed()) {
+                while (stdout.available() > 0) { n = stdout.read(tmp); if (n > 0) outBuf.write(tmp, 0, n); }
+                while (stderr.available() > 0) { n = stderr.read(tmp); if (n > 0) errBuf.write(tmp, 0, n); }
+                break;
+            }
+            Thread.sleep(50);
+        }
+        channel.disconnect();
+
+        String err = errBuf.toString(StandardCharsets.UTF_8).trim();
+        if (!err.isBlank()) log.warn("[SSH] stderr for '{}': {}", command, err);
+        return outBuf.toString(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Sudo komutu çalıştırır.
+     *
+     * - stdout + stderr birleştirilir (2>&1) — hata mesajları kaybedilmez.
+     * - Şifre stdout'ta gözükebilecek sudo prompt'u regex ile temizlenir.
+     * - Dönen ham çıktı DEBUG seviyesinde loglanır; sorun tespitinde kullanılır.
+     */
+    private String sudoExec(Session session, String command, String password) throws Exception {
+        String fullCmd = command + " 2>&1";
+        log.debug("[SSH] sudoExec: {}", fullCmd);
+
+        ChannelExec channel = (ChannelExec) session.openChannel("exec");
+        channel.setCommand(fullCmd);
+
+        OutputStream stdin  = channel.getOutputStream();
+        InputStream  stdout = channel.getInputStream();
+        channel.connect(timeout);
+
+        // Şifreyi connect() hemen ardından gönder.
+        // sudo -S stdin'i bekliyor; kısa bekleme prompt'un gelmesine olanak tanır.
+        Thread.sleep(150);
+        stdin.write((password + "\n").getBytes(StandardCharsets.UTF_8));
+        stdin.flush();
+
+        String raw = readChannel(channel, stdout);
+
+        // Ham çıktıyı logla — neyin döndüğünü görmek sorun tespitinde kritik
+        if (raw.isBlank()) {
+            log.warn("[SSH] sudoExec boş çıktı döndü. Komut: {}", fullCmd);
+        } else {
+            log.debug("[SSH] sudoExec ham çıktı ({} karakter): {}", raw.length(),
+                    raw.length() > 300 ? raw.substring(0, 300) + "..." : raw);
+        }
+
+        String result = stripSudoPrompt(raw);
+
+        // Açık hata mesajlarını WARN olarak logla
+        if (result.contains("sudo: sorry") || result.contains("no tty present")
+                || result.contains("not allowed to execute") || result.contains("Permission denied")
+                || result.contains("No such file") || result.contains("cannot open")) {
+            log.warn("[SSH] sudoExec hata içeriyor. Komut: {}\nÇıktı: {}", fullCmd, result);
+        }
+
+        return result;
+    }
+
     private String readChannel(ChannelExec channel, InputStream stdout) throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         byte[] tmp = new byte[4096];
@@ -68,7 +134,6 @@ public class SshService {
                 if (n > 0) buf.write(tmp, 0, n);
             }
             if (channel.isClosed()) {
-                // kanal kapandıktan sonra gelen son baytları da al
                 while (stdout.available() > 0) {
                     n = stdout.read(tmp);
                     if (n > 0) buf.write(tmp, 0, n);
@@ -81,131 +146,82 @@ public class SshService {
         return buf.toString(StandardCharsets.UTF_8);
     }
 
-    public String execCommand(Session session, String command) throws Exception {
-        ChannelExec channel = (ChannelExec) session.openChannel("exec");
-        channel.setCommand(command);
-
-        InputStream stdout = channel.getInputStream();
-        InputStream stderr = channel.getErrStream();
-        channel.connect(timeout);
-
-        // stderr'i ayrı oku (available tabanlı, bloklama yok)
-        ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
-        byte[] tmp = new byte[4096];
-        int n;
-
-        // stdout'u readChannel ile oku, stderr'i paralel tüket
-        ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
-        while (true) {
-            while (stdout.available() > 0) {
-                n = stdout.read(tmp);
-                if (n > 0) outBuf.write(tmp, 0, n);
-            }
-            while (stderr.available() > 0) {
-                n = stderr.read(tmp);
-                if (n > 0) errBuf.write(tmp, 0, n);
-            }
-            if (channel.isClosed()) {
-                while (stdout.available() > 0) { n = stdout.read(tmp); if (n > 0) outBuf.write(tmp, 0, n); }
-                while (stderr.available() > 0) { n = stderr.read(tmp); if (n > 0) errBuf.write(tmp, 0, n); }
-                break;
-            }
-            Thread.sleep(50);
-        }
-        channel.disconnect();
-
-        String errStr = errBuf.toString(StandardCharsets.UTF_8).trim();
-        if (!errStr.isBlank() && !errStr.contains("[sudo]") && !errStr.contains("password for")) {
-            log.debug("SSH stderr [{}]: {}", command, errStr);
-        }
-        return outBuf.toString(StandardCharsets.UTF_8);
+    private String stripSudoPrompt(String raw) {
+        return raw
+            .replaceAll("(?m)^\\[sudo\\] password for [^\\n:]+:\\s*\\r?\\n?", "")
+            .replaceAll("\\[sudo\\] password for [^\\n:]+:\\s*", "");
     }
 
     /**
-     * sudo -S -u {sudoUser} bash -c {cmd} ile çalıştırır.
-     * SSH şifresi stdin üzerinden sudo'ya iletilir.
+     * sudo çıktısının "bu kullanıcı yetkisiz" hatası içerip içermediğini kontrol eder.
+     * Bu durumda root sudo (sudo olmadan -u) ile fallback yapılabilir.
      */
-    private String execWithSudo(Session session, String command,
-                                String sudoUser, String password) throws Exception {
-        ChannelExec channel = (ChannelExec) session.openChannel("exec");
-        channel.setCommand("sudo -S -u " + sudoUser + " bash -c " + shellQuote(command) + " 2>&1");
-
-        OutputStream stdin  = channel.getOutputStream();
-        InputStream  stdout = channel.getInputStream();
-        channel.connect(timeout);
-
-        stdin.write((password + "\n").getBytes(StandardCharsets.UTF_8));
-        stdin.flush();
-
-        String raw = readChannel(channel, stdout);
-
-        // sudo prompt'u satır başından sıyır (prompt ve çıktı aynı satırda gelebilir)
-        // Örn: "[sudo] password for ertan.eryilmaz: active" → "active"
-        return raw.replaceAll("(?m)\\[sudo\\] password for [^\\n:]+:\\s*", "").trim();
+    private boolean isSudoPermissionError(String output) {
+        return output.contains("not allowed to execute")
+                || output.contains("sudo: sorry")
+                || output.contains("is not in the sudoers");
     }
 
     // ─── Dosya okuma ───────────────────────────────────────────────────────────
 
     private String readRemoteFile(Session session, String sudoUser, String password) throws Exception {
         if (sudoUser != null && !sudoUser.isBlank()) {
-            // sudo -S -u flexcity cat /path/to/file
-            ChannelExec channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("sudo -S -u " + sudoUser + " cat \"" + remotePath + "\" 2>/dev/null");
-
-            OutputStream stdin  = channel.getOutputStream();
-            InputStream  stdout = channel.getInputStream();
-            channel.connect(timeout);
-
-            stdin.write((password + "\n").getBytes(StandardCharsets.UTF_8));
-            stdin.flush();
-
-            return readChannel(channel, stdout);
+            log.debug("[SSH] readRemoteFile (sudo -u {}): {}", sudoUser, remotePath);
+            String result = sudoExec(session,
+                    "sudo -S -u " + sudoUser + " cat \"" + remotePath + "\"",
+                    password);
+            // Bazı makinelerde 'sudo -u <user>' izni yoktur; bu durumda root sudo ile tekrar dene
+            if (isSudoPermissionError(result)) {
+                log.warn("[SSH] 'sudo -u {}' izinli değil; root sudo ile tekrar deneniyor: {}", sudoUser, remotePath);
+                result = sudoExec(session, "sudo -S cat \"" + remotePath + "\"", password);
+            }
+            return result;
         } else {
+            log.debug("[SSH] readRemoteFile (direct): {}", remotePath);
             return execCommand(session, "cat \"" + remotePath + "\"");
         }
     }
 
     // ─── Dosya yazma ───────────────────────────────────────────────────────────
 
-    /**
-     * sudoUser varsa:
-     *   1. SFTP ile /tmp'ye geçici dosya yazar (SSH kullanıcısı yetkileriyle)
-     *   2. sudo -u flexcity ile asıl konuma kopyalar, sahipliği düzeltir
-     *   3. /tmp'deki geçici dosyayı temizler
-     *
-     * sudoUser yoksa: doğrudan SFTP ile yazar (backup + overwrite).
-     */
     private void writeRemoteFile(Session session, String content,
                                  String sudoUser, String password) throws Exception {
         if (sudoUser != null && !sudoUser.isBlank()) {
             String tmpFile = "/tmp/fcm_" + System.currentTimeMillis() + ".properties";
-
-            // 1) /tmp'ye geçici dosya yaz
             writeSftp(session, content, tmpFile);
 
-            // 2) Yedek al
-            execWithSudo(session,
-                    "cp \"" + remotePath + "\" \"" + remotePath + ".bak\" 2>/dev/null || true",
-                    sudoUser, password);
+            // Backup dene; hata "not allowed" ise root sudo'ya geç
+            String backupResult = sudoExec(session,
+                    "sudo -S -u " + sudoUser + " bash -c "
+                    + shellQuote("cp \"" + remotePath + "\" \"" + remotePath + ".bak\" 2>/dev/null || true"),
+                    password);
 
-            // 3) Hedef konuma taşı + sahipliği düzelt
-            execWithSudo(session,
-                    "cp \"" + tmpFile + "\" \"" + remotePath + "\" && "
-                    + "chown " + sudoUser + ":" + sudoUser + " \"" + remotePath + "\"",
-                    sudoUser, password);
+            if (isSudoPermissionError(backupResult)) {
+                log.warn("[SSH] 'sudo -u {}' izinli değil; dosya root sudo ile yazılıyor: {}", sudoUser, remotePath);
+                sudoExec(session,
+                        "sudo -S bash -c "
+                        + shellQuote("cp \"" + remotePath + "\" \"" + remotePath + ".bak\" 2>/dev/null || true"),
+                        password);
+                sudoExec(session,
+                        "sudo -S bash -c "
+                        + shellQuote("cp \"" + tmpFile + "\" \"" + remotePath + "\" && "
+                                   + "chown " + sudoUser + ":" + sudoUser + " \"" + remotePath + "\""),
+                        password);
+            } else {
+                sudoExec(session,
+                        "sudo -S -u " + sudoUser + " bash -c "
+                        + shellQuote("cp \"" + tmpFile + "\" \"" + remotePath + "\" && "
+                                   + "chown " + sudoUser + ":" + sudoUser + " \"" + remotePath + "\""),
+                        password);
+            }
 
-            // 4) Geçici dosyayı sil
             execCommand(session, "rm -f \"" + tmpFile + "\"");
-
-            log.info("Dosya yazıldı (sudo -u {}): {}", sudoUser, remotePath);
+            log.info("[SSH] Dosya yazıldı: {}", remotePath);
         } else {
             ChannelSftp sftp = (ChannelSftp) session.openChannel("sftp");
             sftp.connect(timeout);
-            try {
-                try { sftp.rename(remotePath, remotePath + ".bak"); } catch (Exception ignored) {}
-            } finally {
-                sftp.disconnect();
-            }
+            try { sftp.rename(remotePath, remotePath + ".bak"); } catch (Exception ignored) {}
+            sftp.disconnect();
             writeSftp(session, content, remotePath);
         }
     }
@@ -228,6 +244,9 @@ public class SshService {
         Session session = openSession(host, port, username, password);
         try {
             String content = readRemoteFile(session, sudoUser, password);
+            if (content.isBlank()) {
+                log.warn("[SSH] readProperties: {} adresinden boş içerik döndü ({}:{})", remotePath, host, port);
+            }
             return parseProperties(content).stream()
                     .filter(e -> e.getType() == PropertyEntry.Type.PROPERTY)
                     .toList();
@@ -287,35 +306,13 @@ public class SshService {
 
     // ─── Servis kontrolü ───────────────────────────────────────────────────────
 
-    /**
-     * sudo -S <command> — şifre stdin'den verilir, kullanıcı değiştirilmez (root yetkisi).
-     * systemctl start/stop/restart/is-active için kullanılır.
-     */
-    private String execSudoRoot(Session session, String command, String password) throws Exception {
-        ChannelExec channel = (ChannelExec) session.openChannel("exec");
-        channel.setCommand("sudo -S " + command + " 2>&1");
-
-        OutputStream stdin  = channel.getOutputStream();
-        InputStream  stdout = channel.getInputStream();
-        channel.connect(timeout);
-
-        stdin.write((password + "\n").getBytes(StandardCharsets.UTF_8));
-        stdin.flush();
-
-        String raw = readChannel(channel, stdout);
-
-        // sudo prompt'u satır başından sıyır (prompt ve çıktı aynı satırda gelebilir)
-        // Örn: "[sudo] password for ertan.eryilmaz: active" → "active"
-        return raw.replaceAll("(?m)\\[sudo\\] password for [^\\n:]+:\\s*", "").trim();
-    }
-
     public String getServiceStatus(String host, int port, String username, String password,
                                    String serviceName) throws Exception {
         Session session = openSession(host, port, username, password);
         try {
-            // sudo -S systemctl is-active <service> — şifre stdin'den
-            String out = execSudoRoot(session,
-                    "systemctl is-active " + serviceName, password).trim();
+            String out = sudoExec(session,
+                    "sudo -S systemctl is-active " + serviceName, password).trim();
+            log.debug("[SSH] serviceStatus {} @ {}: '{}'", serviceName, host, out);
             return switch (out) {
                 case "active"   -> "active";
                 case "inactive" -> "inactive";
@@ -346,10 +343,79 @@ public class SshService {
                                String action, String serviceName) throws Exception {
         Session session = openSession(host, port, username, password);
         try {
-            String out = execSudoRoot(session,
-                    "systemctl " + action + " " + serviceName, password).trim();
-            log.info("Service {} {} @ {}:{} -> {}", action, serviceName, host, port,
+            String out = sudoExec(session,
+                    "sudo -S systemctl " + action + " " + serviceName, password).trim();
+            log.info("[SSH] service {} {} @ {} -> {}", action, serviceName, host,
                     out.isBlank() ? "OK" : out);
+        } finally {
+            session.disconnect();
+        }
+    }
+
+    // ─── Canlı log izleme ─────────────────────────────────────────────────────
+
+    public void tailLog(String host, int port, String username, String password,
+                        String sudoUser, String logFile,
+                        Consumer<String> lineCallback,
+                        AtomicBoolean stopped) throws Exception {
+        Session session = openSession(host, port, username, password);
+        try {
+            // sudo -u <user> iznini önceden test et; başarısızsa root sudo kullan
+            String tailCmd;
+            boolean sendPassword = false;
+            if (sudoUser != null && !sudoUser.isBlank()) {
+                String test = sudoExec(session, "sudo -S -u " + sudoUser + " echo ok", password);
+                if (isSudoPermissionError(test)) {
+                    log.warn("[SSH] tailLog: 'sudo -u {}' izinli değil, root sudo kullanılıyor", sudoUser);
+                    tailCmd = "sudo -S tail -f \"" + logFile + "\" 2>&1";
+                } else {
+                    tailCmd = "sudo -S -u " + sudoUser + " tail -f \"" + logFile + "\" 2>&1";
+                }
+                sendPassword = true;
+            } else {
+                tailCmd = "tail -f \"" + logFile + "\" 2>&1";
+            }
+
+            log.debug("[SSH] tailLog: {}", tailCmd);
+            ChannelExec channel = (ChannelExec) session.openChannel("exec");
+            channel.setCommand(tailCmd);
+
+            OutputStream stdin  = channel.getOutputStream();
+            InputStream  stdout = channel.getInputStream();
+            channel.connect(timeout);
+
+            if (sendPassword) {
+                Thread.sleep(150);
+                stdin.write((password + "\n").getBytes(StandardCharsets.UTF_8));
+                stdin.flush();
+            }
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(stdout, StandardCharsets.UTF_8));
+            char[] buf = new char[4096];
+            StringBuilder lineBuf = new StringBuilder();
+
+            while (!stopped.get() && !channel.isClosed()) {
+                if (stdout.available() > 0) {
+                    int n = reader.read(buf);
+                    if (n > 0) {
+                        lineBuf.append(buf, 0, n);
+                        int lastNl = lineBuf.lastIndexOf("\n");
+                        if (lastNl >= 0) {
+                            String[] lines = lineBuf.substring(0, lastNl).split("\n", -1);
+                            for (String line : lines) {
+                                if (!line.contains("[sudo]") && !line.contains("password for")) {
+                                    lineCallback.accept(line);
+                                }
+                            }
+                            lineBuf = new StringBuilder(lineBuf.substring(lastNl + 1));
+                        }
+                    }
+                } else {
+                    Thread.sleep(100);
+                }
+            }
+            channel.disconnect();
         } finally {
             session.disconnect();
         }
@@ -401,70 +467,5 @@ public class SshService {
 
     private String shellQuote(String s) {
         return "'" + s.replace("'", "'\\''") + "'";
-    }
-
-    // ─── Canlı log izleme ─────────────────────────────────────────────────────
-
-    /**
-     * SSH üzerinden tail -f ile log dosyasını canlı izler.
-     * sudoUser varsa sudo -S -u {sudoUser} tail -f ... olarak çalışır.
-     *
-     * @param lineCallback  her satır için çağrılır
-     * @param stopped       true döndüğünde döngü kesilir (SSE bağlantısı koptuğunda)
-     */
-    public void tailLog(String host, int port, String username, String password,
-                        String sudoUser, String logFile,
-                        Consumer<String> lineCallback,
-                        AtomicBoolean stopped) throws Exception {
-        Session session = openSession(host, port, username, password);
-        try {
-            ChannelExec channel = (ChannelExec) session.openChannel("exec");
-
-            String cmd = (sudoUser != null && !sudoUser.isBlank())
-                    ? "sudo -S -u " + sudoUser + " tail -f \"" + logFile + "\" 2>&1"
-                    : "tail -f \"" + logFile + "\" 2>&1";
-            channel.setCommand(cmd);
-
-            OutputStream stdin  = channel.getOutputStream();
-            InputStream  stdout = channel.getInputStream();
-            channel.connect(timeout);
-
-            if (sudoUser != null && !sudoUser.isBlank()) {
-                stdin.write((password + "\n").getBytes(StandardCharsets.UTF_8));
-                stdin.flush();
-            }
-
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(stdout, StandardCharsets.UTF_8));
-            char[] buf = new char[4096];
-            StringBuilder lineBuf = new StringBuilder();
-
-            while (!stopped.get() && !channel.isClosed()) {
-                if (stdout.available() > 0) {
-                    int n = reader.read(buf);
-                    if (n > 0) {
-                        lineBuf.append(buf, 0, n);
-                        // Tam satırları gönder, yarım kalan sonraki okumaya kalsın
-                        int lastNl = lineBuf.lastIndexOf("\n");
-                        if (lastNl >= 0) {
-                            String[] lines = lineBuf.substring(0, lastNl).split("\n", -1);
-                            for (String line : lines) {
-                                // sudo prompt satırını atla
-                                if (!line.contains("[sudo]") && !line.contains("password for")) {
-                                    lineCallback.accept(line);
-                                }
-                            }
-                            lineBuf = new StringBuilder(lineBuf.substring(lastNl + 1));
-                        }
-                    }
-                } else {
-                    Thread.sleep(100);
-                }
-            }
-
-            channel.disconnect();
-        } finally {
-            session.disconnect();
-        }
     }
 }

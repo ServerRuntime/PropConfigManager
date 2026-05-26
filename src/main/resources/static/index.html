@@ -360,6 +360,34 @@
 </head>
 <body>
 
+<!-- ══════════════ GİRİŞ EKRANI ══════════════ -->
+<div class="overlay" id="loginOverlay" style="z-index:2000;background:rgba(13,27,42,.96)">
+  <div class="cred-card" style="width:420px">
+    <div class="cred-header" style="flex-direction:column;align-items:center;text-align:center;padding:32px 28px 24px">
+      <div class="cred-icon" style="width:54px;height:54px;margin-bottom:14px"><i class="fas fa-sliders-h" style="font-size:22px"></i></div>
+      <h2 style="font-size:17px">FlexCity Config Manager</h2>
+      <p style="margin-top:5px">Erişim için şifreyi girin</p>
+    </div>
+    <div class="cred-body">
+      <div class="cred-error hidden" id="loginError">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="loginErrorMsg"></span>
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Şifre</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" />
+          <button class="toggle-pw" onclick="togglePw('loginPass',this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">
+        <i class="fas fa-sign-in-alt"></i> Giriş Yap
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ KİMLİK MODALI ══════════════ -->
 <div class="overlay hidden" id="credOverlay">
   <div class="cred-card">
@@ -466,12 +494,18 @@
 <header class="app-header">
   <div class="hdr-logo"><i class="fas fa-sliders-h"></i></div>
   <div><div class="hdr-title">FlexCity Config Manager</div><sub class="hdr-sub">Remote Properties Yönetim Sistemi</sub></div>
-  <div style="margin-left:auto">
+  <div style="margin-left:auto;display:flex;gap:8px">
     <button id="themeToggle" onclick="toggleTheme()" title="Tema değiştir"
       style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
              width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;
              display:flex;align-items:center;justify-content:center;transition:background .15s;">
       <i class="fas fa-moon"></i>
+    </button>
+    <button onclick="doLogout()" title="Çıkış Yap"
+      style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:14px;
+             display:flex;align-items:center;justify-content:center;transition:background .15s;">
+      <i class="fas fa-sign-out-alt"></i>
     </button>
   </div>
 </header>
@@ -609,6 +643,15 @@
 
 <script>
 // ══════════════════════════════════════════════════════
+// CONTEXT PATH — otomatik tespit
+// Uygulama /config-machines/ altında çalışıyorsa tüm
+// fetch/EventSource URL'leri buna göre oluşturulur.
+// ══════════════════════════════════════════════════════
+const BASE = window.location.pathname.replace(/\/[^/]*$/, ''); // örn: '/config-machines'
+
+function apiUrl(path) { return BASE + path; }   // '/api/machines' → '/config-machines/api/machines'
+
+// ══════════════════════════════════════════════════════
 // DURUM
 // ══════════════════════════════════════════════════════
 const S = {
@@ -655,14 +698,79 @@ function applyTheme(theme) {
 // ══════════════════════════════════════════════════════
 async function init() {
   initTheme();
+
+  // Oturum kontrolü
   try {
-    const res  = await fetch('/api/machines');
+    const res  = await fetch(apiUrl('/auth/check'));
+    const data = await res.json();
+    if (!data.authenticated) {
+      showLogin();
+      return;
+    }
+  } catch (e) {
+    showLogin();
+    return;
+  }
+
+  await loadApp();
+}
+
+async function loadApp() {
+  document.getElementById('loginOverlay').classList.add('hidden');
+  try {
+    const res  = await fetch(apiUrl('/api/machines'));
     const data = await res.json();
     S.machines = data.machines || [];
     renderSidebar();
   } catch (e) {
     toast('Makine listesi alınamadı: ' + e.message, 'error');
   }
+}
+
+function showLogin() {
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('loginPass').focus(), 80);
+}
+
+async function doLogin() {
+  const pass = document.getElementById('loginPass').value;
+  const btn  = document.getElementById('loginBtn');
+  if (!pass) { showLoginError('Şifre boş olamaz'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Giriş yapılıyor...';
+  document.getElementById('loginError').classList.add('hidden');
+
+  try {
+    const res  = await fetch(apiUrl('/auth/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('loginPass').value = '';
+      await loadApp();
+    } else {
+      showLoginError(data.error || 'Şifre hatalı');
+    }
+  } catch (e) {
+    showLoginError('Bağlantı hatası: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Giriş Yap';
+  }
+}
+
+function showLoginError(msg) {
+  document.getElementById('loginErrorMsg').textContent = msg;
+  document.getElementById('loginError').classList.remove('hidden');
+}
+
+async function doLogout() {
+  try { await fetch(apiUrl('/auth/logout'), { method: 'POST' }); } catch (_) {}
+  // Sayfayı yenile — login ekranı gösterilecek
+  window.location.reload();
 }
 
 // ══════════════════════════════════════════════════════
@@ -744,7 +852,7 @@ async function loadMachine(id) {
 async function fetchProperties(id) {
   const params = new URLSearchParams(resolveCredsFor(id));
   try {
-    const res  = await fetch(`/api/properties/${id}?${params}`);
+    const res  = await fetch(apiUrl(`/api/properties/${id}?${params}`));
     const data = await res.json();
     if (data.success) {
       S.properties = data.properties;
@@ -774,7 +882,7 @@ async function fetchServiceStatus() {
   setServiceBtns(false);
   const params = new URLSearchParams(resolveCredsFor(S.currentId));
   try {
-    const res  = await fetch(`/api/service/${S.currentId}/status?${params}`);
+    const res  = await fetch(apiUrl(`/api/service/${S.currentId}/status?${params}`));
     const data = await res.json();
     if (data.success) {
       setSvcBadge(data.status);
@@ -802,7 +910,7 @@ async function serviceAction(action) {
 
   const creds = resolveCredsFor(S.currentId);
   try {
-    const res  = await fetch(`/api/service/${S.currentId}/${action}`, {
+    const res  = await fetch(apiUrl(`/api/service/${S.currentId}/${action}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(creds)
@@ -873,7 +981,7 @@ async function submitCreds() {
   document.getElementById('credError').classList.add('hidden');
 
   try {
-    const res  = await fetch('/api/test-connection', {
+    const res  = await fetch(apiUrl('/api/test-connection'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ machineId: id, username: user, password: pass })
     });
@@ -971,7 +1079,7 @@ async function saveEdit() {
   const creds = resolveCredsFor(S.currentId);
   try {
     const isAdd = S.editMode === 'add';
-    const url   = isAdd ? `/api/properties/${S.currentId}/add` : `/api/properties/${S.currentId}`;
+    const url   = apiUrl(isAdd ? `/api/properties/${S.currentId}/add` : `/api/properties/${S.currentId}`);
     const res   = await fetch(url, {
       method: isAdd ? 'POST' : 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1000,7 +1108,7 @@ async function confirmDelete() {
   const btn = document.getElementById('delConfirmBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
-    const res  = await fetch(`/api/properties/${S.currentId}`, {
+    const res  = await fetch(apiUrl(`/api/properties/${S.currentId}`), {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...resolveCredsFor(S.currentId), key: S.deleteKey })
     });
@@ -1119,13 +1227,13 @@ async function applyTemplate(idx) {
     try {
       if (exists) {
         if (exists.value === value) { skipped++; continue; }
-        await fetch(`/api/properties/${S.currentId}`, {
+        await fetch(apiUrl(`/api/properties/${S.currentId}`), {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...resolveCredsFor(S.currentId), key, value })
         });
         updated++;
       } else {
-        await fetch(`/api/properties/${S.currentId}/add`, {
+        await fetch(apiUrl(`/api/properties/${S.currentId}/add`), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...resolveCredsFor(S.currentId), key, value })
         });
@@ -1171,7 +1279,7 @@ function connectLog() {
 
   clearLog();
   const params = new URLSearchParams(resolveCredsFor(S.currentId));
-  const source = new EventSource(`/api/logs/${S.currentId}?${params}`);
+  const source = new EventSource(apiUrl(`/api/logs/${S.currentId}?${params}`));
   S.logSource  = source;
 
   setLogDot('checking');
@@ -1302,6 +1410,7 @@ function appendLogLine(text, forceClass) {
 // Klavye kısayolları
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') ['editOverlay','deleteOverlay','credOverlay','templateOverlay'].forEach(id => closeM(id));
+  if (e.key === 'Enter' && !document.getElementById('loginOverlay').classList.contains('hidden')) doLogin();
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); if(S.currentId) openAdd(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='r') { e.preventDefault(); refreshProps(); }
   if (e.key === 'Enter' && !document.getElementById('credOverlay').classList.contains('hidden')) submitCreds();

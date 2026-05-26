@@ -168,9 +168,9 @@
     .mi.active .mi-host { color: rgba(255,255,255,.65); }
     .mi-badges { display: flex; gap: 4px; margin-top: 2px; }
     .env-badge { font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; border: 1px solid; border-radius: 4px; padding: 0 4px; line-height: 14px; }
-    .env-badge.production  { color: #86efac; border-color: rgba(134,239,172,.3); }
-    .env-badge.staging     { color: #fcd34d; border-color: rgba(252,211,77,.3); }
-    .env-badge.development { color: #93c5fd; border-color: rgba(147,197,253,.3); }
+    .env-badge.production,
+    .env-badge.staging,
+    .env-badge.development { color: #86efac; border-color: rgba(134,239,172,.3); }
     .mi.active .env-badge  { color: rgba(255,255,255,.8); border-color: rgba(255,255,255,.25); }
     .key-badge { font-size: 9px; background: rgba(37,99,235,.4); color: #93c5fd; border-radius: 4px; padding: 0 5px; line-height: 14px; font-weight: 600; }
     .mi.active .key-badge  { background: rgba(255,255,255,.25); color: #fff; }
@@ -302,9 +302,38 @@
     .log-line.err  { color: var(--log-err);  font-weight: 600; }
     .log-line.warn { color: var(--log-warn); }
     .log-line.info { color: var(--log-info); }
-    .log-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--log-empty-fg); text-align: center; gap: 12px; }
-    .log-empty i { font-size: 40px; }
-    .log-empty p { font-size: 13px; }
+    .log-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: rgba(255,255,255,.5); text-align: center; gap: 12px; }
+    .log-empty i { font-size: 40px; opacity: .6; }
+    .log-empty p { font-size: 13px; font-weight: 500; }
+
+    /* ─── LOG FILTER BAR ─── */
+    .log-filter-bar { display: flex; align-items: center; gap: 7px; padding: 7px 20px; background: var(--card2); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+    .log-search-wrap { position: relative; flex: 1; min-width: 160px; }
+    .log-search-wrap i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 12px; pointer-events: none; }
+    .log-search-wrap input { width: 100%; height: 30px; border: 1.5px solid var(--border); border-radius: 7px; padding: 0 9px 0 28px; font-size: 12px; font-family: inherit; background: var(--card); color: var(--text); outline: none; transition: border-color .2s; }
+    .log-search-wrap input:focus { border-color: var(--accent); }
+    .log-filter-btns { display: flex; gap: 4px; }
+    .log-filter-btn { height: 28px; padding: 0 11px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--card); color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .13s; }
+    .log-filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .log-filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .log-filter-btn.f-err.active  { background: var(--danger);  border-color: var(--danger); }
+    .log-filter-btn.f-warn.active { background: var(--warn);    border-color: var(--warn); }
+    .log-filter-btn.f-info.active { background: #0284c7;        border-color: #0284c7; }
+    /* CSS filter — hide non-matching lines */
+    .log-output.filter-ERR  .log-line:not(.err)  { display: none; }
+    .log-output.filter-WARN .log-line:not(.warn) { display: none; }
+    .log-output.filter-INFO .log-line:not(.info) { display: none; }
+    .log-line.search-hide { display: none !important; }
+
+    /* ─── TEMPLATE MODAL ─── */
+    .tpl-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin-bottom: 14px; }
+    .tpl-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--card2); }
+    .tpl-info { flex: 1; min-width: 0; }
+    .tpl-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .tpl-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .tpl-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px; }
+    .tpl-save-wrap { border-top: 1px solid var(--border); padding-top: 14px; }
+    .tpl-save-row { display: flex; gap: 8px; margin-top: 8px; }
 
     /* ─── SPINNER ─── */
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
@@ -330,6 +359,34 @@
   </style>
 </head>
 <body>
+
+<!-- ══════════════ GİRİŞ EKRANI ══════════════ -->
+<div class="overlay" id="loginOverlay" style="z-index:2000;background:rgba(13,27,42,.96)">
+  <div class="cred-card" style="width:420px">
+    <div class="cred-header" style="flex-direction:column;align-items:center;text-align:center;padding:32px 28px 24px">
+      <div class="cred-icon" style="width:54px;height:54px;margin-bottom:14px"><i class="fas fa-sliders-h" style="font-size:22px"></i></div>
+      <h2 style="font-size:17px">FlexCity Config Manager</h2>
+      <p style="margin-top:5px">Erişim için şifreyi girin</p>
+    </div>
+    <div class="cred-body">
+      <div class="cred-error hidden" id="loginError">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="loginErrorMsg"></span>
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Şifre</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" />
+          <button class="toggle-pw" onclick="togglePw('loginPass',this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">
+        <i class="fas fa-sign-in-alt"></i> Giriş Yap
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════ KİMLİK MODALI ══════════════ -->
 <div class="overlay hidden" id="credOverlay">
@@ -410,16 +467,45 @@
   </div>
 </div>
 
+<!-- ══════════════ ŞABLON MODALI ══════════════ -->
+<div class="overlay hidden" id="templateOverlay">
+  <div class="modal-card" style="width:560px">
+    <div class="modal-head">
+      <div class="modal-icon blue"><i class="fas fa-bookmark"></i></div>
+      <div><h3>Property Şablonları</h3><p>Sık kullanılan ayar gruplarını kaydet ve uygula</p></div>
+    </div>
+    <div class="modal-body" style="padding-bottom:0">
+      <div class="tpl-list" id="tplList"></div>
+      <div class="tpl-save-wrap">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px">Mevcut Properties'leri Şablon Olarak Kaydet</div>
+        <div class="tpl-save-row">
+          <div class="input-wrap" style="flex:1"><i class="fas fa-bookmark"></i><input type="text" id="tplNameInput" placeholder="Şablon adı (örn: Prod DB Ayarları)" /></div>
+          <button class="btn btn-primary btn-sm" onclick="saveTemplate()"><i class="fas fa-save"></i> Kaydet</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('templateOverlay')">Kapat</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ APP SHELL ══════════════ -->
 <header class="app-header">
   <div class="hdr-logo"><i class="fas fa-sliders-h"></i></div>
   <div><div class="hdr-title">FlexCity Config Manager</div><sub class="hdr-sub">Remote Properties Yönetim Sistemi</sub></div>
-  <div style="margin-left:auto">
+  <div style="margin-left:auto;display:flex;gap:8px">
     <button id="themeToggle" onclick="toggleTheme()" title="Tema değiştir"
       style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
              width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;
              display:flex;align-items:center;justify-content:center;transition:background .15s;">
       <i class="fas fa-moon"></i>
+    </button>
+    <button onclick="doLogout()" title="Çıkış Yap"
+      style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:14px;
+             display:flex;align-items:center;justify-content:center;transition:background .15s;">
+      <i class="fas fa-sign-out-alt"></i>
     </button>
   </div>
 </header>
@@ -458,6 +544,7 @@
       <!-- Properties aksiyonları -->
       <div id="propsActions" style="display:flex;gap:6px;margin-left:8px;padding-left:16px;border-left:1px solid var(--border)">
         <button class="btn btn-outline btn-sm" onclick="refreshProps()"><i class="fas fa-sync-alt"></i> Yenile</button>
+        <button class="btn btn-outline btn-sm" onclick="openTemplates()"><i class="fas fa-bookmark"></i> Şablonlar</button>
         <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="fas fa-plus"></i> Ekle</button>
       </div>
     </div>
@@ -525,6 +612,20 @@
           <input type="checkbox" id="autoScroll" checked style="margin:0 4px 0 0"> Otomatik kaydır
         </label>
       </div>
+      <!-- Log filtre barı -->
+      <div class="log-filter-bar">
+        <div class="log-search-wrap">
+          <i class="fas fa-search"></i>
+          <input type="text" id="logSearch" placeholder="Satırlarda ara..." oninput="filterLogText(this.value)" />
+        </div>
+        <div class="log-filter-btns">
+          <button class="log-filter-btn active" data-filter="ALL"  onclick="setLogFilter('ALL')">Tümü</button>
+          <button class="log-filter-btn f-err"  data-filter="ERR"  onclick="setLogFilter('ERR')">ERROR</button>
+          <button class="log-filter-btn f-warn" data-filter="WARN" onclick="setLogFilter('WARN')">WARN</button>
+          <button class="log-filter-btn f-info" data-filter="INFO" onclick="setLogFilter('INFO')">INFO</button>
+        </div>
+      </div>
+
       <div class="log-output-wrap">
         <div class="log-output" id="logOutput">
           <div class="log-empty" id="logEmpty">
@@ -542,6 +643,15 @@
 
 <script>
 // ══════════════════════════════════════════════════════
+// CONTEXT PATH — otomatik tespit
+// Uygulama /config-machines/ altında çalışıyorsa tüm
+// fetch/EventSource URL'leri buna göre oluşturulur.
+// ══════════════════════════════════════════════════════
+const BASE = window.location.pathname.replace(/\/[^/]*$/, ''); // örn: '/config-machines'
+
+function apiUrl(path) { return BASE + path; }   // '/api/machines' → '/config-machines/api/machines'
+
+// ══════════════════════════════════════════════════════
 // DURUM
 // ══════════════════════════════════════════════════════
 const S = {
@@ -556,6 +666,8 @@ const S = {
   activeTab:    'props',  // 'props' | 'logs'
   logSource:    null,     // EventSource
   logLineCount: 0,
+  logFilter:    'ALL',
+  logSearch:    '',
 };
 
 // ══════════════════════════════════════════════════════
@@ -586,14 +698,79 @@ function applyTheme(theme) {
 // ══════════════════════════════════════════════════════
 async function init() {
   initTheme();
+
+  // Oturum kontrolü
   try {
-    const res  = await fetch('/api/machines');
+    const res  = await fetch(apiUrl('/auth/check'));
+    const data = await res.json();
+    if (!data.authenticated) {
+      showLogin();
+      return;
+    }
+  } catch (e) {
+    showLogin();
+    return;
+  }
+
+  await loadApp();
+}
+
+async function loadApp() {
+  document.getElementById('loginOverlay').classList.add('hidden');
+  try {
+    const res  = await fetch(apiUrl('/api/machines'));
     const data = await res.json();
     S.machines = data.machines || [];
     renderSidebar();
   } catch (e) {
     toast('Makine listesi alınamadı: ' + e.message, 'error');
   }
+}
+
+function showLogin() {
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('loginPass').focus(), 80);
+}
+
+async function doLogin() {
+  const pass = document.getElementById('loginPass').value;
+  const btn  = document.getElementById('loginBtn');
+  if (!pass) { showLoginError('Şifre boş olamaz'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Giriş yapılıyor...';
+  document.getElementById('loginError').classList.add('hidden');
+
+  try {
+    const res  = await fetch(apiUrl('/auth/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('loginPass').value = '';
+      await loadApp();
+    } else {
+      showLoginError(data.error || 'Şifre hatalı');
+    }
+  } catch (e) {
+    showLoginError('Bağlantı hatası: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Giriş Yap';
+  }
+}
+
+function showLoginError(msg) {
+  document.getElementById('loginErrorMsg').textContent = msg;
+  document.getElementById('loginError').classList.remove('hidden');
+}
+
+async function doLogout() {
+  try { await fetch(apiUrl('/auth/logout'), { method: 'POST' }); } catch (_) {}
+  // Sayfayı yenile — login ekranı gösterilecek
+  window.location.reload();
 }
 
 // ══════════════════════════════════════════════════════
@@ -675,7 +852,7 @@ async function loadMachine(id) {
 async function fetchProperties(id) {
   const params = new URLSearchParams(resolveCredsFor(id));
   try {
-    const res  = await fetch(`/api/properties/${id}?${params}`);
+    const res  = await fetch(apiUrl(`/api/properties/${id}?${params}`));
     const data = await res.json();
     if (data.success) {
       S.properties = data.properties;
@@ -705,7 +882,7 @@ async function fetchServiceStatus() {
   setServiceBtns(false);
   const params = new URLSearchParams(resolveCredsFor(S.currentId));
   try {
-    const res  = await fetch(`/api/service/${S.currentId}/status?${params}`);
+    const res  = await fetch(apiUrl(`/api/service/${S.currentId}/status?${params}`));
     const data = await res.json();
     if (data.success) {
       setSvcBadge(data.status);
@@ -733,7 +910,7 @@ async function serviceAction(action) {
 
   const creds = resolveCredsFor(S.currentId);
   try {
-    const res  = await fetch(`/api/service/${S.currentId}/${action}`, {
+    const res  = await fetch(apiUrl(`/api/service/${S.currentId}/${action}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(creds)
@@ -804,7 +981,7 @@ async function submitCreds() {
   document.getElementById('credError').classList.add('hidden');
 
   try {
-    const res  = await fetch('/api/test-connection', {
+    const res  = await fetch(apiUrl('/api/test-connection'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ machineId: id, username: user, password: pass })
     });
@@ -839,6 +1016,7 @@ function renderTable() {
   const filtered = S.properties.filter(p =>
     p.key.toLowerCase().includes(q) || p.value.toLowerCase().includes(q)
   );
+
   document.getElementById('statTotal').textContent    = S.properties.length;
   document.getElementById('statFiltered').textContent = filtered.length;
 
@@ -848,9 +1026,9 @@ function renderTable() {
     return;
   }
 
-  document.getElementById('propsBody').innerHTML = filtered.map((p, i) => `
+  document.getElementById('propsBody').innerHTML = filtered.map((p, idx) => `
     <tr>
-      <td class="td-idx">${i + 1}</td>
+      <td class="td-idx">${idx + 1}</td>
       <td class="td-key">${esc(p.key)}</td>
       <td class="td-val"><span class="val-chip">${esc(p.value)}</span></td>
       <td class="td-act">
@@ -901,7 +1079,7 @@ async function saveEdit() {
   const creds = resolveCredsFor(S.currentId);
   try {
     const isAdd = S.editMode === 'add';
-    const url   = isAdd ? `/api/properties/${S.currentId}/add` : `/api/properties/${S.currentId}`;
+    const url   = apiUrl(isAdd ? `/api/properties/${S.currentId}/add` : `/api/properties/${S.currentId}`);
     const res   = await fetch(url, {
       method: isAdd ? 'POST' : 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -930,7 +1108,7 @@ async function confirmDelete() {
   const btn = document.getElementById('delConfirmBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
-    const res  = await fetch(`/api/properties/${S.currentId}`, {
+    const res  = await fetch(apiUrl(`/api/properties/${S.currentId}`), {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...resolveCredsFor(S.currentId), key: S.deleteKey })
     });
@@ -987,6 +1165,97 @@ function toast(msg, type='info', dur=3500) {
 }
 
 // ══════════════════════════════════════════════════════
+// PROPERTY ŞABLONLARI (localStorage)
+// ══════════════════════════════════════════════════════
+const TPL_KEY = 'fcm-templates';
+
+function loadTemplates() {
+  try { return JSON.parse(localStorage.getItem(TPL_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveTemplates(list) {
+  localStorage.setItem(TPL_KEY, JSON.stringify(list));
+}
+
+function openTemplates() {
+  renderTemplateList();
+  document.getElementById('tplNameInput').value = '';
+  document.getElementById('templateOverlay').classList.remove('hidden');
+}
+
+function renderTemplateList() {
+  const list = loadTemplates();
+  const el   = document.getElementById('tplList');
+  if (!list.length) {
+    el.innerHTML = '<div class="tpl-empty"><i class="fas fa-bookmark" style="font-size:24px;opacity:.3;display:block;margin-bottom:8px"></i>Henüz şablon yok</div>';
+    return;
+  }
+  el.innerHTML = list.map((t, i) => `
+    <div class="tpl-item">
+      <div class="tpl-info">
+        <div class="tpl-name">${esc(t.name)}</div>
+        <div class="tpl-meta">${t.props.length} property · ${t.date}</div>
+      </div>
+      <button class="btn btn-success btn-sm" onclick="applyTemplate(${i})"><i class="fas fa-play"></i> Uygula</button>
+      <button class="btn btn-ghost  btn-sm" onclick="deleteTemplate(${i})"><i class="fas fa-trash"></i></button>
+    </div>`).join('');
+}
+
+function saveTemplate() {
+  const name  = document.getElementById('tplNameInput').value.trim();
+  if (!name) { toast('Şablon adı girin', 'warning'); return; }
+  const props = S.properties.filter(p => p.type === 'property').map(p => ({ key: p.key, value: p.value }));
+  if (!props.length) { toast('Kaydedilecek property yok', 'warning'); return; }
+  const list = loadTemplates();
+  list.unshift({ name, date: new Date().toLocaleDateString('tr-TR'), props });
+  saveTemplates(list);
+  renderTemplateList();
+  document.getElementById('tplNameInput').value = '';
+  toast(`"${name}" şablonu kaydedildi (${props.length} property)`, 'success');
+}
+
+async function applyTemplate(idx) {
+  const t = loadTemplates()[idx];
+  if (!t) return;
+  if (!confirm(`"${t.name}" şablonundaki ${t.props.length} property uygulanacak.\nMevcut property'ler güncellenir, yeni olanlar eklenir.\nDevam edilsin mi?`)) return;
+
+  closeM('templateOverlay');
+  let added = 0, updated = 0, skipped = 0;
+  for (const { key, value } of t.props) {
+    const exists = S.properties.find(p => p.type === 'property' && p.key === key);
+    try {
+      if (exists) {
+        if (exists.value === value) { skipped++; continue; }
+        await fetch(apiUrl(`/api/properties/${S.currentId}`), {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...resolveCredsFor(S.currentId), key, value })
+        });
+        updated++;
+      } else {
+        await fetch(apiUrl(`/api/properties/${S.currentId}/add`), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...resolveCredsFor(S.currentId), key, value })
+        });
+        added++;
+      }
+    } catch { skipped++; }
+  }
+  await refreshProps();
+  toast(`Şablon uygulandı: ${added} eklendi, ${updated} güncellendi, ${skipped} atlandı`, 'success');
+}
+
+function deleteTemplate(idx) {
+  const list = loadTemplates();
+  const name = list[idx]?.name;
+  if (!confirm(`"${name}" şablonu silinsin mi?`)) return;
+  list.splice(idx, 1);
+  saveTemplates(list);
+  renderTemplateList();
+  toast(`"${name}" şablonu silindi`, 'info');
+}
+
+// ══════════════════════════════════════════════════════
 // TAB SWITCH
 // ══════════════════════════════════════════════════════
 function switchTab(tab) {
@@ -1010,7 +1279,7 @@ function connectLog() {
 
   clearLog();
   const params = new URLSearchParams(resolveCredsFor(S.currentId));
-  const source = new EventSource(`/api/logs/${S.currentId}?${params}`);
+  const source = new EventSource(apiUrl(`/api/logs/${S.currentId}?${params}`));
   S.logSource  = source;
 
   setLogDot('checking');
@@ -1038,6 +1307,8 @@ function connectLog() {
   });
 
   source.onerror = () => {
+    // Önce source'u kapat, sonra UI'ı sıfırla
+    // (_logDisconnect zaten S.logSource üzerinden kapatır)
     setLogDot('error');
     setLogText('Bağlantı kesildi');
     _logDisconnect();
@@ -1045,13 +1316,14 @@ function connectLog() {
 }
 
 function disconnectLog() {
-  if (!S.logSource) return;
-  S.logSource.close();
   _logDisconnect();
 }
 
 function _logDisconnect() {
-  S.logSource = null;
+  if (S.logSource) {
+    S.logSource.close();   // tarayıcının auto-reconnect yapmasını engelle
+    S.logSource = null;
+  }
   setLogDot('');
   setLogText('Bağlı değil');
   document.getElementById('btnLogConnect').style.display    = '';
@@ -1062,7 +1334,10 @@ function clearLog() {
   document.getElementById('logOutput').innerHTML =
     '<div class="log-empty" id="logEmpty"><i class="fas fa-terminal"></i><p>Bağlan\'a tıklayarak canlı log akışını başlatın</p></div>';
   S.logLineCount = 0;
+  S.logSearch    = '';
   document.getElementById('logLineCount').textContent = '0 satır';
+  if (document.getElementById('logSearch')) document.getElementById('logSearch').value = '';
+  setLogFilter('ALL');
 }
 
 function setLogDot(cls) {
@@ -1074,9 +1349,38 @@ function setLogText(t) {
   document.getElementById('logStatusText').textContent = t;
 }
 
+// ══════════════════════════════════════════════════════
+// LOG FİLTRE
+// ══════════════════════════════════════════════════════
+function setLogFilter(type) {
+  S.logFilter = type;
+  const out = document.getElementById('logOutput');
+  out.className = 'log-output' + (type !== 'ALL' ? ' filter-' + type : '');
+  document.querySelectorAll('.log-filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === type);
+  });
+}
+
+function filterLogText(q) {
+  S.logSearch = q.toLowerCase();
+  document.querySelectorAll('#logOutput .log-line').forEach(el => {
+    el.classList.toggle('search-hide', !!q && !el.textContent.toLowerCase().includes(q.toLowerCase()));
+  });
+}
+
+const LOG_MAX = 5000;
+
 function appendLogLine(text, forceClass) {
   const emp = document.getElementById('logEmpty');
   if (emp) emp.remove();
+
+  const out = document.getElementById('logOutput');
+
+  // 5000 satır limitini aş → eskiyi sil
+  if (S.logLineCount >= LOG_MAX) {
+    const first = out.querySelector('.log-line');
+    if (first) { first.remove(); S.logLineCount--; }
+  }
 
   const el = document.createElement('span');
   el.className = 'log-line';
@@ -1089,8 +1393,14 @@ function appendLogLine(text, forceClass) {
   if (cls) el.classList.add(cls);
   el.textContent = text + '\n';
 
-  const out = document.getElementById('logOutput');
+  // Metin araması aktifse hide uygula
+  if (S.logSearch && !text.toLowerCase().includes(S.logSearch)) {
+    el.classList.add('search-hide');
+  }
+
   out.appendChild(el);
+  S.logLineCount++;
+  document.getElementById('logLineCount').textContent = S.logLineCount.toLocaleString('tr-TR') + ' satır';
 
   if (document.getElementById('autoScroll').checked) {
     out.scrollTop = out.scrollHeight;
@@ -1099,11 +1409,12 @@ function appendLogLine(text, forceClass) {
 
 // Klavye kısayolları
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') ['editOverlay','deleteOverlay','credOverlay'].forEach(id => closeM(id));
+  if (e.key === 'Escape') ['editOverlay','deleteOverlay','credOverlay','templateOverlay'].forEach(id => closeM(id));
+  if (e.key === 'Enter' && !document.getElementById('loginOverlay').classList.contains('hidden')) doLogin();
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); if(S.currentId) openAdd(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='r') { e.preventDefault(); refreshProps(); }
   if (e.key === 'Enter' && !document.getElementById('credOverlay').classList.contains('hidden')) submitCreds();
-  if (e.key === 'Enter' && !document.getElementById('editOverlay').classList.contains('hidden'))  saveEdit();
+  if (e.key === 'Enter' && !document.getElementById('editOverlay').classList.contains('hidden')) saveEdit();
 });
 
 init();
