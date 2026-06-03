@@ -441,6 +441,18 @@
     html[data-theme="dark"] .diff-panel .env-badge,
     html[data-theme="dark"] .search-panel .env-badge { color: #86efac; border-color: rgba(134,239,172,.3); }
 
+    /* ─── ANALYZE TAB ─── */
+    .analyze-sub-tab { height: 34px; padding: 0 14px; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px; font-family: inherit; transition: all .13s; }
+    .analyze-sub-tab:hover { color: var(--text); background: var(--card); }
+    .analyze-sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .thread-row-hot  { background: rgba(220,38,38,.07); }
+    .thread-row-warn { background: rgba(217,119,6,.07); }
+    .thread-row-sel  { background: rgba(37,99,235,.1) !important; outline: 1px solid var(--accent); }
+    .dump-thread-hdr { color: #79c0ff; }
+    .dump-line-hot   { color: #ff7b7b; font-weight: 700; }
+    .dump-line-class { color: #a5d6ff; }
+    .dump-line-muted { color: rgba(255,255,255,.35); }
+
     /* ─── HELP MODAL ─── */
     .help-tab { height: 38px; padding: 0 14px; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2.5px solid transparent; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-family: inherit; transition: all .15s; }
     .help-tab:hover { color: var(--text); background: var(--card2); }
@@ -820,6 +832,9 @@
       <button class="tab-btn" id="tabBtnSystem" onclick="switchTab('system')">
         <i class="fas fa-microchip"></i> Sistem
       </button>
+      <button class="tab-btn" id="tabBtnAnalyze" onclick="switchTab('analyze')">
+        <i class="fas fa-stethoscope"></i> Analiz
+      </button>
     </div>
 
     <!-- Properties Tab -->
@@ -983,6 +998,128 @@
 
       </div><!-- /sysBody -->
     </div><!-- /systemTab -->
+
+    <!-- Analyze Tab -->
+    <div class="sys-area" id="analyzeTab">
+      <!-- Toolbar -->
+      <div class="log-toolbar" style="gap:10px">
+        <div style="display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:4px 12px">
+          <span style="font-size:11px;color:var(--text-muted)">Ana PID</span>
+          <span style="font-size:14px;font-weight:700;color:var(--text);font-family:'Courier New',monospace" id="analyzePid">—</span>
+        </div>
+        <div class="log-sep"></div>
+        <button class="btn btn-outline btn-sm" id="btnAnalyzeRefresh" onclick="analyzeRefresh()">
+          <i class="fas fa-sync-alt"></i> Yenile
+        </button>
+        <button class="btn btn-primary btn-sm" id="btnThreadDump" onclick="loadThreadDump()">
+          <i class="fas fa-file-code"></i> Thread Dump Al
+        </button>
+        <span style="margin-left:auto;font-size:11px;color:var(--text-muted)" id="analyzeTimestamp"></span>
+      </div>
+
+      <!-- Alt sekmeler -->
+      <div style="display:flex;background:var(--card2);border-bottom:1px solid var(--border);flex-shrink:0">
+        <button class="analyze-sub-tab active" id="aSubTab0" onclick="switchAnalyzeTab(0)"><i class="fas fa-microchip"></i> Ana Process</button>
+        <button class="analyze-sub-tab" id="aSubTab1" onclick="switchAnalyzeTab(1)"><i class="fas fa-fire"></i> Sıcak Thread'ler</button>
+        <button class="analyze-sub-tab" id="aSubTab2" onclick="switchAnalyzeTab(2)"><i class="fas fa-file-code"></i> Thread Dump</button>
+        <button class="analyze-sub-tab" id="aSubTab3" onclick="switchAnalyzeTab(3)"><i class="fas fa-link"></i> TID Eşleştirme</button>
+      </div>
+
+      <div class="sys-body">
+        <!-- Loading / Error -->
+        <div class="sys-loading" id="analyzeLoading" style="display:none"><span class="spinner dark"></span> Veri alınıyor…</div>
+        <div class="sys-error"   id="analyzeError"   style="display:none"></div>
+
+        <!-- 0: Ana Process -->
+        <div id="analyzePane0">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+              <i class="fas fa-microchip" style="color:#185FA5"></i>
+              <span style="font-size:12px;font-weight:600;color:var(--text)">Ana Java Process Bilgisi</span>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:auto">CPU'ya göre en yüksek java process</span>
+            </div>
+            <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px" id="processInfoGrid">
+              <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;grid-column:1/-1">
+                Yenile butonuna basın
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1: Sıcak Thread'ler -->
+        <div id="analyzePane1" style="display:none">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px">
+                <i class="fas fa-fire" style="color:#E24B4A"></i> CPU'yu en çok tüketen thread'ler
+              </span>
+              <span style="font-size:11px;color:var(--text-muted)" id="analyzeTimestamp"></span>
+            </div>
+            <div style="overflow-x:auto">
+              <table id="threadTable" style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead>
+                  <tr style="background:var(--card2)">
+                    <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">TID</th>
+                    <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">Thread</th>
+                    <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);width:180px">CPU %</th>
+                    <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">MEM %</th>
+                    <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">Durum</th>
+                    <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">Süre</th>
+                    <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">HEX</th>
+                  </tr>
+                </thead>
+                <tbody id="threadTableBody">
+                  <tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px">Yenile butonuna basın</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2: Thread Dump -->
+        <div id="analyzePane2" style="display:none">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px">
+                <i class="fas fa-file-code" style="color:#185FA5"></i> jstack çıktısı
+              </span>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span style="font-size:11px;color:var(--text-muted)" id="dumpTimestamp"></span>
+                <button class="log-icon-btn" onclick="downloadDump()" title="İndir"><i class="fas fa-download"></i></button>
+              </div>
+            </div>
+            <div id="threadDumpOutput"
+              style="padding:12px 16px;font-family:'Courier New',monospace;font-size:11.5px;line-height:1.8;
+                     color:var(--log-text);background:var(--log-bg);max-height:440px;overflow-y:auto;
+                     white-space:pre-wrap;word-break:break-all">
+              <span style="color:rgba(255,255,255,.4)">Thread dump henüz alınmadı. "Thread Dump Al" butonuna basın.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3: TID Eşleştirme -->
+        <div id="analyzePane3" style="display:none">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+              <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px"><i class="fas fa-link" style="color:#185FA5;margin-right:6px"></i>TID Eşleştir</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">
+                Sıcak thread tablosundan bir satıra tıklayın veya TID girin → Thread dump'ta ilgili stack trace bulunur.
+              </div>
+              <div style="display:flex;gap:8px">
+                <input id="tidInput" type="text" placeholder="TID (decimal) girin... örn: 18391"
+                  style="flex:1;height:34px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-size:13px;font-family:'Courier New',monospace;background:var(--card2);color:var(--text);outline:none"
+                  onkeydown="if(event.key==='Enter')matchTid()">
+                <button class="btn btn-primary btn-sm" onclick="matchTid()"><i class="fas fa-search"></i> Bul</button>
+              </div>
+            </div>
+          </div>
+          <div id="tidMatchResult" style="background:var(--log-bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-family:'Courier New',monospace;font-size:11.5px;line-height:1.9;color:var(--log-text);max-height:380px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">
+            <span style="color:rgba(255,255,255,.4)">Bir TID seçin veya girin...</span>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /analyzeTab -->
 
   </main>
 </div>
@@ -1769,6 +1906,262 @@ function toggleDiffSection(id, headEl) {
 // SEARCH — GLOBAL ARAMA
 // ══════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════
+// THREAD ANALİZ
+// ══════════════════════════════════════════════════════
+const AZ = {
+  pid:          '',
+  threads:      [],
+  dumpRaw:      '',
+  dumpTime:     '',
+  timer:        null,
+  countdown:    0,
+  countTimer:   null,
+  activePane:   0,
+  selectedTid:  null,
+};
+
+function switchAnalyzeTab(idx) {
+  AZ.activePane = idx;
+  [0,1,2,3].forEach(i => {
+    document.getElementById('aSubTab' + i).classList.toggle('active', i === idx);
+    document.getElementById('analyzePane' + i).style.display = i === idx ? '' : 'none';
+  });
+}
+
+async function initAnalyze() {
+  if (!S.currentId) return;
+  await analyzeRefresh();
+}
+
+function stopAnalyzeTimer() {}  // artık timer yok, uyumluluk için boş
+
+function analyzeRefresh() {
+  return Promise.all([loadProcessInfo(), loadHotThreads()]);
+}
+
+async function loadProcessInfo() {
+  if (!S.currentId) return;
+  const grid = document.getElementById('processInfoGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;padding:16px;text-align:center"><span class="spinner dark"></span></div>';
+  try {
+    const url = apiUrl(`/api/analyze/${S.currentId}/process`) + (AZ.pid ? '?pid=' + AZ.pid : '');
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (!data.success) { grid.innerHTML = `<div style="grid-column:1/-1;color:var(--danger);padding:16px">${data.error}</div>`; return; }
+
+    AZ.pid = data.pid;
+    document.getElementById('analyzePid').textContent = AZ.pid;
+    document.getElementById('analyzeTimestamp').textContent = new Date().toLocaleTimeString('tr-TR');
+
+    const cpuVal  = parseFloat(data.cpu)  || 0;
+    const memVal  = parseFloat(data.mem)  || 0;
+    const cpuColor = cpuVal > 80 ? '#E24B4A' : cpuVal > 40 ? '#EF9F27' : '#1D9E75';
+    const memColor = memVal > 80 ? '#E24B4A' : memVal > 60 ? '#EF9F27' : '#1D9E75';
+
+    const card = (icon, label, val, color) =>
+      `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:5px">
+          <i class="fas ${icon}"></i> ${label}
+        </div>
+        <div style="font-size:22px;font-weight:700;color:${color || 'var(--text)'};font-family:'Courier New',monospace">${val}</div>
+      </div>`;
+
+    grid.innerHTML =
+      card('fa-hashtag',    'PID',           data.pid,                    'var(--accent)') +
+      card('fa-user',       'Kullanıcı',    data.user    || '—',         'var(--text)') +
+      card('fa-microchip',  'CPU % (anlık)',  (data.cpu  || '0') + '%',  cpuColor) +
+      card('fa-memory',     'MEM %',         (data.mem  || '0') + '%',   memColor) +
+      card('fa-database',   'RSS (fiziksel)',(data.rssMb || '0') + ' MB',memColor) +
+      card('fa-hdd',        'VmPeak (tepe)', (data.vmPeakMb || '0') + ' MB','#EF9F27') +
+      card('fa-expand-arrows-alt','VSZ (sanal)',(data.vszMb||'0')+' MB','var(--text-muted)') +
+      card('fa-clock',      'CPU Süresi',    data.time    || '—',        'var(--text)') +
+      card('fa-calendar',   'Başlangıç',     data.start   || '—',        'var(--text)') +
+      card('fa-tasks',      'Thread Sayısı', data.threadCount || '—',    'var(--text)') +
+      card('fa-folder-open','Açık Dosya',    data.fdCount || '—',        'var(--text)') +
+      card('fa-info-circle','Durum',         data.state   || '—',        '#1D9E75');
+  } catch (e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;color:var(--danger);padding:16px">Hata: ${e.message}</div>`;
+  }
+}
+
+async function loadHotThreads() {
+  if (!S.currentId) return;
+  document.getElementById('analyzeLoading').style.display = 'flex';
+  document.getElementById('analyzeError').style.display   = 'none';
+  try {
+    const res  = await fetch(apiUrl(`/api/analyze/${S.currentId}/threads` + (AZ.pid ? '?pid=' + AZ.pid : '')));
+    const data = await res.json();
+    document.getElementById('analyzeLoading').style.display = 'none';
+
+    if (!data.success) {
+      document.getElementById('analyzeError').textContent   = data.error || 'Hata';
+      document.getElementById('analyzeError').style.display = 'block';
+      return;
+    }
+
+    AZ.pid     = data.pid;
+    AZ.threads = data.threads || [];
+    document.getElementById('analyzePid').textContent       = AZ.pid;
+    document.getElementById('analyzeTimestamp').textContent = new Date().toLocaleTimeString('tr-TR');
+    renderThreadTable();
+  } catch (e) {
+    document.getElementById('analyzeLoading').style.display = 'none';
+    document.getElementById('analyzeError').textContent     = 'Hata: ' + e.message;
+    document.getElementById('analyzeError').style.display   = 'block';
+  }
+}
+
+function renderThreadTable() {
+  const body = document.getElementById('threadTableBody');
+  if (!AZ.threads.length) {
+    body.innerHTML = '<tr><td colspan="7" style="padding:28px;text-align:center;color:var(--text-muted)">Thread bulunamadı</td></tr>';
+    return;
+  }
+  // En yüksek CPU'lu thread'i otomatik seç (ilk yüklemede)
+  if (!AZ.selectedTid && AZ.threads.length > 0) {
+    AZ.selectedTid = AZ.threads[0].tid;
+    document.getElementById('tidInput').value = AZ.threads[0].tid;
+  }
+  body.innerHTML = AZ.threads.map(t => {
+    const cpu    = parseFloat(t.cpu) || 0;
+    const isHot  = cpu >= 50;
+    const isWarn = cpu >= 20 && cpu < 50;
+    const barW   = Math.min(100, cpu);
+    const barColor = isHot ? '#E24B4A' : isWarn ? '#EF9F27' : '#1D9E75';
+    const rowCls   = isHot ? 'thread-row-hot' : isWarn ? 'thread-row-warn' : '';
+    const selCls   = AZ.selectedTid === t.tid ? ' thread-row-sel' : '';
+    const badge    = isHot  ? '<span style="background:#FCEBEB;color:#A32D2D;font-size:10px;padding:1px 7px;border-radius:20px;margin-left:5px">yüksek</span>'
+                   : isWarn ? '<span style="background:#FAEEDA;color:#854F0B;font-size:10px;padding:1px 7px;border-radius:20px;margin-left:5px">dikkat</span>'
+                   : '';
+    return `<tr class="${rowCls}${selCls}" onclick="selectTid('${t.tid}')" style="cursor:pointer;border-bottom:1px solid var(--border)">
+      <td style="padding:8px 12px;font-family:'Courier New',monospace;color:var(--text)">${t.tid}</td>
+      <td style="padding:8px 12px;color:var(--text-muted)">${t.command}</td>
+      <td style="padding:8px 12px">
+        <div style="display:inline-flex;align-items:center;gap:8px">
+          <div style="width:80px;height:6px;background:var(--card2);border-radius:3px;overflow:hidden;flex-shrink:0">
+            <div style="width:${barW}%;height:100%;background:${barColor};border-radius:3px"></div>
+          </div>
+          <span style="color:${barColor};font-weight:700;font-family:'Courier New',monospace">${cpu.toFixed(1)}</span>
+          ${badge}
+        </div>
+      </td>
+      <td style="padding:8px 12px;color:var(--text-muted)">${t.mem}</td>
+      <td style="padding:8px 12px;color:var(--text-muted)">${t.state}</td>
+      <td style="padding:8px 12px;color:var(--text-muted);font-family:'Courier New',monospace">${t.time}</td>
+      <td style="padding:8px 12px;color:#185FA5;font-family:'Courier New',monospace">${t.tidHex}</td>
+    </tr>`;
+  }).join('');
+}
+
+function selectTid(tid) {
+  AZ.selectedTid = tid;
+  renderThreadTable();
+  document.getElementById('tidInput').value = tid;
+  if (AZ.dumpRaw) {
+    matchTid();
+    switchAnalyzeTab(3);
+  } else {
+    switchAnalyzeTab(3);
+    toast('Önce Thread Dump alın, sonra eşleştirme yapılabilir', 'warning');
+  }
+}
+
+async function loadThreadDump() {
+  if (!S.currentId) return;
+  const btn = document.getElementById('btnThreadDump');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Alınıyor...';
+  try {
+    const res  = await fetch(apiUrl(`/api/analyze/${S.currentId}/dump` + (AZ.pid ? '?pid=' + AZ.pid : '')));
+    const data = await res.json();
+    if (!data.success) { toast(data.error || 'Thread dump alınamadı', 'error'); return; }
+
+    AZ.dumpRaw  = data.dump;
+    AZ.dumpTime = new Date().toLocaleTimeString('tr-TR');
+    document.getElementById('dumpTimestamp').textContent = AZ.dumpTime;
+    renderThreadDump();
+    switchAnalyzeTab(2);
+    toast('Thread dump alındı', 'success');
+  } catch (e) {
+    toast('Hata: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-file-code"></i> Thread Dump Al';
+  }
+}
+
+function renderThreadDump() {
+  const out = document.getElementById('threadDumpOutput');
+  if (!AZ.dumpRaw) { out.textContent = 'Dump boş'; return; }
+
+  // Satırları renklendirerek göster
+  const html = AZ.dumpRaw.split('\n').map(line => {
+    const esc = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (line.startsWith('"'))    return `<span class="dump-thread-hdr">${esc}</span>`;
+    if (line.includes('at com.flexcity') || line.includes('at com.ibb'))
+                                 return `<span class="dump-line-hot">${esc}</span>`;
+    if (line.includes('\tat '))  return `<span class="dump-line-class">${esc}</span>`;
+    if (line.trim().startsWith('java.lang.Thread.State') || line.trim() === '')
+                                 return `<span class="dump-line-muted">${esc}</span>`;
+    return `<span style="color:var(--log-text)">${esc}</span>`;
+  }).join('\n');
+  out.innerHTML = html;
+}
+
+function matchTid() {
+  const tidStr = document.getElementById('tidInput').value.trim();
+  if (!tidStr) { toast('TID giriniz', 'warning'); return; }
+  if (!AZ.dumpRaw) { toast('Önce Thread Dump alın', 'warning'); return; }
+
+  // TID'yi hex'e çevir
+  let tidHex = '';
+  try { tidHex = '0x' + parseInt(tidStr, 10).toString(16); } catch(_) {}
+
+  const result = document.getElementById('tidMatchResult');
+  const lines  = AZ.dumpRaw.split('\n');
+  let found = false, capture = false, block = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Thread başlığında nid=0xHEX var
+    if (line.startsWith('"') && tidHex && line.toLowerCase().includes('nid=' + tidHex)) {
+      capture = true;
+      found   = true;
+      block   = [line];
+    } else if (capture) {
+      if (line.trim() === '' && block.length > 2) { capture = false; }
+      else block.push(line);
+    }
+  }
+
+  if (!found) {
+    result.innerHTML = `<span style="color:#ff7b7b">TID ${tidStr} (${tidHex}) bulunamadı. Thread dump'ın güncel olduğundan emin olun.</span>`;
+    return;
+  }
+
+  const html = block.map(line => {
+    const esc = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (line.startsWith('"'))    return `<span class="dump-thread-hdr">${esc}</span>`;
+    if (line.includes('at com.flexcity') || line.includes('at com.ibb'))
+                                 return `<span class="dump-line-hot">  ▶ ${esc}</span>`;
+    if (line.includes('\tat '))  return `<span class="dump-line-class">${esc}</span>`;
+    return `<span class="dump-line-muted">${esc}</span>`;
+  }).join('\n');
+  result.innerHTML = html;
+}
+
+function downloadDump() {
+  if (!AZ.dumpRaw) { toast('Önce dump alın', 'warning'); return; }
+  const m    = S.machines.find(x => x.id === S.currentId);
+  const name = (m ? m.name : 'thread') + '-dump-' + new Date().toISOString().replace(/[:.]/g,'-') + '.txt';
+  const blob = new Blob([AZ.dumpRaw], { type: 'text/plain' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+}
+
+// ══════════════════════════════════════════════════════
 // KULLANIM KILAVUZU
 // ══════════════════════════════════════════════════════
 function openHelp() {
@@ -1929,11 +2322,14 @@ async function loadMachine(id) {
   document.getElementById('propsBody').innerHTML =
     '<tr class="loading-row"><td colspan="4"><span class="spinner dark"></span> Properties yükleniyor...</td></tr>';
 
-  // Tab bar'ı göster, logs sekmesini logFile'a göre aktif/pasif yap
+  // Tab bar'ı göster, sekmeleri makine özelliklerine göre aç/kapa
   document.getElementById('tabBar').classList.remove('hidden');
   const tabLogs = document.getElementById('tabBtnLogs');
   tabLogs.disabled = !m.logFile;
-  tabLogs.title    = !!m.logFile ? '' : 'Bu makine için logFile tanımlı değil';
+  tabLogs.title    = m.logFile ? '' : 'Bu makine için logFile tanımlı değil';
+
+  const tabAnalyze = document.getElementById('tabBtnAnalyze');
+  tabAnalyze.style.display = (m.hasJstack || m.jstackPath) ? '' : 'none';
 
   // Props sekmesine geç
   switchTab('props');
@@ -2550,19 +2946,24 @@ function deleteTemplate(idx) {
 // ══════════════════════════════════════════════════════
 function switchTab(tab) {
   S.activeTab = tab;
-  const isProps  = tab === 'props';
-  const isLogs   = tab === 'logs';
-  const isSys    = tab === 'system';
+  const isProps   = tab === 'props';
+  const isLogs    = tab === 'logs';
+  const isSys     = tab === 'system';
+  const isAnalyze = tab === 'analyze';
 
   document.getElementById('propsTab').style.display = isProps ? '' : 'none';
   document.getElementById('logTab').classList.toggle('visible', isLogs);
   document.getElementById('systemTab').classList.toggle('visible', isSys);
+  document.getElementById('analyzeTab').classList.toggle('visible', isAnalyze);
   document.getElementById('tabBtnProps').classList.toggle('active', isProps);
   document.getElementById('tabBtnLogs').classList.toggle('active', isLogs);
   document.getElementById('tabBtnSystem').classList.toggle('active', isSys);
+  document.getElementById('tabBtnAnalyze').classList.toggle('active', isAnalyze);
   document.getElementById('propsActions').style.display = isProps ? 'flex' : 'none';
 
-  if (isSys && S.currentId) loadSystemInfo();
+  if (isSys     && S.currentId) loadSystemInfo();
+  if (isAnalyze && S.currentId) initAnalyze();
+  if (!isAnalyze) stopAnalyzeTimer();
 }
 
 // ══════════════════════════════════════════════════════

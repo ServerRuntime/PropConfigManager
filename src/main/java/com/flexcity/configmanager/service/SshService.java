@@ -423,6 +423,178 @@ public class SshService {
         }
     }
 
+    // ─── Thread analiz ────────────────────────────────────────────────────────
+
+    /**
+     * CPU'yu en çok tüketen Java process'in PID'ini döndürür.
+     * ps aux --sort=-%cpu ile anlık en yüksek CPU'lu java process bulunur.
+     * Fallback: systemctl MainPID → pgrep.
+     */
+    /**
+     * /proc/PID/stat ve /proc/PID/status üzerinden anlık process bilgisi.
+     * CPU%: iki snapshot arası delta (1 saniyelik ölçüm) — top gibi anlık değer.
+     * RAM: /proc/PID/status VmRSS (fiziksel), VmSize (sanal).
+     * Hiçbir yazma yapılmaz, tamamen read-only.
+     */
+    public Map<String, String> getProcessInfo(String host, int port,
+                                               String username, String password,
+                                               String pid) throws Exception {
+        Session session = openSession(host, port, username, password);
+        try {
+            // Tek komutta: 1 saniyelik CPU ölçümü + status bilgisi
+            String script =
+                "PID=" + pid + "; " +
+                "STAT1=$(awk '{print $14+$15}' /proc/$PID/stat 2>/dev/null || echo 0); " +
+                "UP1=$(awk '{print $1}' /proc/uptime); " +
+                "sleep 1; " +
+                "STAT2=$(awk '{print $14+$15}' /proc/$PID/stat 2>/dev/null || echo 0); " +
+                "UP2=$(awk '{print $1}' /proc/uptime); " +
+                "NCPU=$(nproc); HZ=100; " +
+                "DELTA_CPU=$(( STAT2 - STAT1 )); " +
+                "DELTA_TIME=$(awk \"BEGIN{printf \\\"%d\\\", ($UP2 - $UP1) * $HZ * $NCPU}\"); " +
+                "CPU_PCT=$(awk \"BEGIN{if($DELTA_TIME>0) printf \\\"%.1f\\\", $DELTA_CPU*100/$DELTA_TIME; else print 0}\"); " +
+                "echo \"CPU_PCT=$CPU_PCT\"; " +
+                "grep -E 'VmRSS|VmSize|VmPeak|Threads|State' /proc/$PID/status 2>/dev/null; " +
+                "echo \"FD_COUNT=$(ls /proc/$PID/fd 2>/dev/null | wc -l)\"; " +
+                "echo \"USER=$(ps -p $PID -o user= 2>/dev/null)\"; " +
+                "echo \"START=$(ps -p $PID -o lstart= 2>/dev/null | awk '{print $2,$3,$4,$5}')\"; " +
+                "echo \"CPUTIME=$(ps -p $PID -o time= 2>/dev/null)\"";
+
+            String raw = execCommand(session, "bash -c '" + script.replace("'", "'\\''") + "'").trim();
+            log.debug("[Analyze] /proc bilgisi:\n{}", raw);
+
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("pid", pid);
+
+            for (String line : raw.split("\n")) {
+                String t = line.trim();
+                if (t.startsWith("CPU_PCT="))       info.put("cpu",         t.substring(8));
+                else if (t.startsWith("VmRSS:"))    info.put("rssMb",       String.valueOf(parseLong(t.replaceAll("[^0-9]","")) / 1024));
+                else if (t.startsWith("VmSize:"))   info.put("vszMb",       String.valueOf(parseLong(t.replaceAll("[^0-9]","")) / 1024));
+                else if (t.startsWith("VmPeak:"))   info.put("vmPeakMb",    String.valueOf(parseLong(t.replaceAll("[^0-9]","")) / 1024));
+                else if (t.startsWith("Threads:"))  info.put("threadCount",  t.replaceAll("[^0-9]",""));
+                else if (t.startsWith("State:"))    info.put("state",        t.replace("State:","").trim());
+                else if (t.startsWith("FD_COUNT=")) info.put("fdCount",      t.substring(9));
+                else if (t.startsWith("USER="))     info.put("user",         t.substring(5));
+                else if (t.startsWith("START="))    info.put("start",        t.substring(6));
+                else if (t.startsWith("CPUTIME="))  info.put("time",         t.substring(8).trim());
+            }
+
+            // RAM yüzdesi: rssMb / total RAM
+            String totalRamRaw = execCommand(session, "grep MemTotal /proc/meminfo | awk '{print $2}'").trim();
+            long totalRamKb = parseLong(totalRamRaw);
+            if (totalRamKb > 0) {
+                long rssKb = parseLong(info.getOrDefault("rssMb","0")) * 1024;
+                double memPct = rssKb * 100.0 / totalRamKb;
+                info.put("mem", String.format("%.1f", memPct));
+            }
+
+            return info;
+        } finally {
+            session.disconnect();
+        }
+    }
+
+    public String getJavaPid(String host, int port, String username, String password,
+                              String serviceName) throws Exception {
+        Session session = openSession(host, port, username, password);
+        try {
+            // Anlık en yüksek CPU'lu java process'i bul
+            String hotPid = execCommand(session,
+                    "ps aux --sort=-%cpu | grep java | grep -v grep | head -1 | awk '{print $2}' 2>/dev/null").trim();
+            if (!hotPid.isBlank()) {
+                log.debug("[Analyze] En yüksek CPU'lu java PID: {}", hotPid);
+                return hotPid;
+            }
+            // Fallback 1: systemctl
+            if (serviceName != null && !serviceName.isBlank()) {
+                String pid = execCommand(session,
+                        "systemctl show " + serviceName + " --property=MainPID --value 2>/dev/null").trim();
+                if (!pid.isBlank() && !pid.equals("0")) return pid;
+            }
+            // Fallback 2: pgrep
+            String pid = execCommand(session, "pgrep -f 'java.*\\.jar' 2>/dev/null | head -1").trim();
+            return pid.isBlank() ? "" : pid;
+        } finally {
+            session.disconnect();
+        }
+    }
+
+    /**
+     * /proc/{pid}/task altındaki her thread'in CPU ve durum bilgisini çeker.
+     * top'un birimli çıktısına (42.4g, 1536 CPU) güvenmek yerine
+     * ps -T ile thread listesi + /proc fs üzerinden okunur.
+     *
+     * Çıktı: tid, name, cpu, mem, state, time, tidHex
+     */
+    /**
+     * top -H -p PID ile anlık thread CPU değerlerini çeker.
+     * VIRT/RES kolonları birimli olabilir (42.4g) — awk ile sadece
+     * ihtiyaç duyulan kolonlar (TID, %CPU, %MEM, TIME+, COMMAND) alınır.
+     */
+    public List<Map<String, String>> getHotThreads(String host, int port,
+                                                    String username, String password,
+                                                    String pid) throws Exception {
+        Session session = openSession(host, port, username, password);
+        try {
+            // top -H: thread modu, -b: batch, -n1: tek snapshot, -p PID: sadece bu process
+            // awk: başlık satırlarını atla (NR>7), sadece sayısal TID'li satırları al,
+            //      $1=TID $9=%CPU $10=%MEM $11=TIME+ $12=COMMAND (VIRT/RES atlanıyor)
+            String raw = execCommand(session,
+                    "top -H -b -n1 -p " + pid +
+                    " 2>/dev/null | awk 'NR>7 && $1~/^[0-9]+$/ {print $1,$9,$10,$11,$12}'").trim();
+
+            List<Map<String, String>> threads = new ArrayList<>();
+
+            for (String line : raw.split("\n")) {
+                String t = line.trim();
+                if (t.isBlank()) continue;
+                String[] p = t.split("\\s+");
+                if (p.length < 4) continue;
+
+                Map<String, String> th = new LinkedHashMap<>();
+                th.put("tid",     p[0]);
+                th.put("cpu",     p[1]);
+                th.put("mem",     p[2]);
+                th.put("time",    p[3]);
+                th.put("command", p.length > 4 ? p[4] : "java");
+                th.put("state",   "");  // top -H'da state kolonu ayrıca yok
+                try {
+                    th.put("tidHex", "0x" + Long.toHexString(Long.parseLong(p[0])));
+                } catch (Exception ignored) {
+                    th.put("tidHex", "");
+                }
+                threads.add(th);
+            }
+
+            // CPU'ya göre azalan sırala
+            threads.sort(Comparator.comparingDouble((Map<String, String> t) -> {
+                try { return Double.parseDouble(t.get("cpu")); }
+                catch (Exception e) { return 0.0; }
+            }).reversed());
+
+            return threads;
+        } finally {
+            session.disconnect();
+        }
+    }
+
+    /**
+     * jstack PID çıktısını döndürür.
+     * jstackPath: tam yol veya "jstack" (PATH'te varsa).
+     */
+    public String getThreadDump(String host, int port, String username, String password,
+                                String pid, String jstackPath) throws Exception {
+        Session session = openSession(host, port, username, password);
+        try {
+            String cmd = jstackPath + " " + pid + " 2>&1";
+            log.info("[Analyze] Thread dump: {}", cmd);
+            return execCommand(session, cmd);
+        } finally {
+            session.disconnect();
+        }
+    }
+
     // ─── Sistem bilgisi ───────────────────────────────────────────────────────
 
     /**

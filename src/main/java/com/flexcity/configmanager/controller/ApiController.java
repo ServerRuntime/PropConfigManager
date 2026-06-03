@@ -421,6 +421,8 @@ public class ApiController {
         map.put("serviceName",    m.getServiceName());
         map.put("hasCredentials", m.isHasCredentials());
         map.put("sudoUser",       m.getSudoUser());
+        map.put("logFile",        m.getLogFile());
+        map.put("hasJstack",      m.getJstackPath() != null && !m.getJstackPath().isBlank());
         return map;
     }
 

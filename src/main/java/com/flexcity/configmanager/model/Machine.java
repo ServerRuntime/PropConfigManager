@@ -32,6 +32,13 @@ public class Machine {
      */
     private String logFile;
 
+    /**
+     * Opsiyonel: jstack yolu (JDK kurulu değilse tam yol gerekir).
+     * Örn: /home/flexcity/java/prerequisites/jdk1.8x/bin/jstack
+     * Boşsa "jstack" komutu doğrudan kullanılır.
+     */
+    private String jstackPath;
+
     /** JSON'dan okunur, dışarıya yazılmaz */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String username;
@@ -74,6 +81,13 @@ public class Machine {
 
     public boolean hasLogFile() {
         return logFile != null && !logFile.isBlank();
+    }
+
+    public String getJstackPath()                  { return jstackPath; }
+    public void   setJstackPath(String jstackPath) { this.jstackPath = jstackPath; }
+
+    public String resolvedJstack() {
+        return (jstackPath != null && !jstackPath.isBlank()) ? jstackPath : "jstack";
     }
 
     public String getUsername()              { return username; }
