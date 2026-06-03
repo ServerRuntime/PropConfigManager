@@ -23,7 +23,7 @@ Uzak Linux sunucularındaki `application.properties` dosyalarını SSH üzerinde
 
 ## Genel Bakış
 
-FlexCity Config Manager, 13 farklı sunucu ortamının (prod, test, dev, geçiş, vezne, vs.) yapılandırma dosyalarını merkezi olarak yönetmek için geliştirilmiştir. Sunucuya SSH ile bağlanıp terminal açmak yerine, şirket ağındaki herhangi bir bilgisayardan tarayıcı aracılığıyla tüm işlemler gerçekleştirilebilir.
+Config Manager, 13 farklı sunucu ortamının (prod, test, dev, geçiş, vezne, vs.) yapılandırma dosyalarını merkezi olarak yönetmek için geliştirilmiştir. Sunucuya SSH ile bağlanıp terminal açmak yerine, şirket ağındaki herhangi bir bilgisayardan tarayıcı aracılığıyla tüm işlemler gerçekleştirilebilir.
 
 
 ---
