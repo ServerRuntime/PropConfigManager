@@ -441,6 +441,28 @@
     html[data-theme="dark"] .diff-panel .env-badge,
     html[data-theme="dark"] .search-panel .env-badge { color: #86efac; border-color: rgba(134,239,172,.3); }
 
+    /* ─── HELP MODAL ─── */
+    .help-tab { height: 38px; padding: 0 14px; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2.5px solid transparent; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-family: inherit; transition: all .15s; }
+    .help-tab:hover { color: var(--text); background: var(--card2); }
+    .help-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .help-section { display: none; }
+    .help-section.active { display: block; }
+    .help-hero { padding: 18px 22px; display: flex; align-items: center; gap: 14px; color: #fff; }
+    .help-hero i { font-size: 26px; opacity: .9; flex-shrink: 0; }
+    .help-hero-title { font-size: 15px; font-weight: 700; }
+    .help-hero-sub   { font-size: 12px; opacity: .75; margin-top: 3px; }
+    .help-steps { padding: 16px 22px; display: flex; flex-direction: column; gap: 0; }
+    .help-step { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .help-step:last-child { border-bottom: none; }
+    .help-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .help-step-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .help-step-desc  { font-size: 12px; color: var(--text-muted); line-height: 1.7; }
+    .help-step-desc code { background: var(--card2); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; font-size: 11px; color: var(--key-color); }
+    .help-step-desc strong { color: var(--text); }
+    .help-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--card2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 7px; font-size: 11px; color: var(--text); }
+    .help-badge-primary { display: inline-flex; align-items: center; gap: 4px; background: var(--accent); border-radius: 5px; padding: 2px 8px; font-size: 11px; color: #fff; font-weight: 600; }
+    .help-badge-success { display: inline-flex; align-items: center; gap: 4px; background: #16a34a; border-radius: 5px; padding: 2px 8px; font-size: 11px; color: #fff; font-weight: 600; }
+
     /* ─── SYSTEM TAB ─── */
     .sys-area { display: none; flex-direction: column; overflow: hidden; flex: 1; }
     .sys-area.visible { display: flex; }
@@ -718,6 +740,21 @@
              display:flex;align-items:center;gap:7px;transition:background .15s;">
       <i class="fas fa-code-branch"></i> Karşılaştır
     </button>
+    <button onclick="openHelp()" title="Kullanım Kılavuzu"
+      style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;font-weight:700;
+             display:flex;align-items:center;justify-content:center;transition:background .15s;">
+      ?
+    </button>
+    <button id="btnAdminBell" onclick="openApprovalPanel()" title="Bekleyen Onay Talepleri"
+      style="display:none;position:relative;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;
+             align-items:center;justify-content:center;transition:background .15s;">
+      <i class="fas fa-bell"></i>
+      <span id="bellBadge" style="display:none;position:absolute;top:-5px;right:-5px;width:17px;height:17px;
+            border-radius:50%;background:#E24B4A;color:#fff;font-size:9px;font-weight:700;
+            align-items:center;justify-content:center;"></span>
+    </button>
     <button id="themeToggle" onclick="toggleTheme()" title="Tema değiştir"
       style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
              width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;
@@ -757,9 +794,9 @@
           <span id="svcBadgeText">—</span>
         </span>
         <div class="svc-actions">
-          <button class="btn btn-success btn-sm" id="btnStart"   onclick="serviceAction('start')"   title="Başlat"><i class="fas fa-play"></i> Başlat</button>
-          <button class="btn btn-danger  btn-sm" id="btnStop"    onclick="serviceAction('stop')"    title="Durdur"><i class="fas fa-stop"></i> Durdur</button>
-          <button class="btn btn-warn    btn-sm" id="btnRestart" onclick="serviceAction('restart')" title="Yeniden Başlat"><i class="fas fa-redo"></i> Restart</button>
+          <button class="btn btn-success btn-sm" id="btnStart"   onclick="svcClick('start')"   title="Başlat"><i class="fas fa-play"></i> Başlat</button>
+          <button class="btn btn-danger  btn-sm" id="btnStop"    onclick="svcClick('stop')"    title="Durdur"><i class="fas fa-stop"></i> Durdur</button>
+          <button class="btn btn-warn    btn-sm" id="btnRestart" onclick="svcClick('restart')" title="Yeniden Başlat"><i class="fas fa-redo"></i> Restart</button>
           <button class="btn btn-outline btn-sm" onclick="fetchServiceStatus()"><i class="fas fa-sync-alt"></i></button>
         </div>
       </div>
@@ -819,25 +856,10 @@
 
     <!-- Logs Tab -->
     <div class="log-area" id="logTab">
-      <!-- Ana toolbar -->
-      <div class="log-toolbar">
+        <div class="log-toolbar">
         <div class="log-status">
           <div class="log-dot" id="logDot"></div>
           <span class="log-status-text" id="logStatusText">Bağlı değil</span>
-        </div>
-
-        <div class="log-sep"></div>
-
-        <div class="log-hist-group">
-          <span class="log-hist-label">Geçmiş:</span>
-          <select id="logHistLines" class="log-hist-select">
-            <option value="200">200 satır</option>
-            <option value="500">500 satır</option>
-            <option value="1000">1000 satır</option>
-            <option value="2000">2000 satır</option>
-            <option value="5000">5000 satır</option>
-            <option value="0" selected>Sadece canlı</option>
-          </select>
         </div>
 
         <div class="log-sep"></div>
@@ -860,6 +882,9 @@
           <span class="log-count" id="logLineCount">0 satır</span>
           <button class="log-icon-btn" onclick="clearLog()" title="Temizle"><i class="fas fa-eraser"></i></button>
           <button class="log-icon-btn" onclick="scrollLogBottom()" title="Alta git"><i class="fas fa-arrow-down"></i></button>
+          <label class="log-autoscroll-label">
+            <input type="checkbox" id="autoScroll" checked> Otomatik kaydır
+          </label>
           <button class="btn btn-success btn-sm" id="btnLogConnect" onclick="connectLog()">
             <i class="fas fa-play"></i> Bağlan
           </button>
@@ -876,18 +901,6 @@
             <p>Bağlan'a tıklayarak canlı log akışını başlatın</p>
           </div>
         </div>
-      </div>
-
-      <!-- Alt status bar -->
-      <div class="log-statusbar" id="logStatusBar" style="display:none">
-        <div class="log-sb-left">
-          <span class="log-sb-hist" id="logSbHist"></span>
-          <span class="log-sb-sep" id="logSbSep" style="display:none">·</span>
-          <span class="log-sb-live" id="logSbLive" style="display:none"><i class="fas fa-circle" style="font-size:7px;margin-right:4px"></i>Canlı akış aktif</span>
-        </div>
-        <label class="log-autoscroll-label">
-          <input type="checkbox" id="autoScroll" checked> Otomatik kaydır
-        </label>
       </div>
     </div><!-- /logTab -->
 
@@ -974,6 +987,465 @@
   </main>
 </div>
 
+<!-- ══════ KULLANIM KILAVUZU ══════ -->
+<div class="overlay hidden" id="helpOverlay">
+  <div class="modal-box" style="max-width:640px;border-radius:16px;overflow:hidden;padding:0;max-height:90vh;display:flex;flex-direction:column">
+
+    <!-- Başlık -->
+    <div style="padding:22px 24px 18px;background:linear-gradient(135deg,#1e3a5f,#1e40af);flex-shrink:0;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:13px">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff">
+          <i class="fas fa-book-open"></i>
+        </div>
+        <div>
+          <div style="font-size:17px;font-weight:700;color:#fff">Kullanım Kılavuzu</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:2px">FlexCity Config Manager — Hızlı Başlangıç</div>
+        </div>
+      </div>
+      <button onclick="closeM('helpOverlay')"
+        style="background:rgba(255,255,255,.15);border:none;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Sekmeler -->
+    <div style="display:flex;gap:0;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto">
+      <button class="help-tab active" onclick="switchHelpTab(0)"><i class="fas fa-list-ul"></i> Properties</button>
+      <button class="help-tab" onclick="switchHelpTab(1)"><i class="fas fa-power-off"></i> Servis</button>
+      <button class="help-tab" onclick="switchHelpTab(2)"><i class="fas fa-terminal"></i> Loglar</button>
+      <button class="help-tab" onclick="switchHelpTab(3)"><i class="fas fa-microchip"></i> Sistem</button>
+      <button class="help-tab" onclick="switchHelpTab(4)"><i class="fas fa-search"></i> Arama & Diff</button>
+      <button class="help-tab" onclick="switchHelpTab(5)"><i class="fas fa-shield-alt"></i> Onay</button>
+    </div>
+
+    <!-- İçerik -->
+    <div style="flex:1;overflow-y:auto;background:var(--card)">
+
+      <!-- 0: Properties -->
+      <div class="help-section active" id="helpTab0">
+        <div class="help-hero" style="background:linear-gradient(135deg,#0f4c81,#1a65a8)">
+          <i class="fas fa-list-ul"></i>
+          <div>
+            <div class="help-hero-title">Properties Yönetimi</div>
+            <div class="help-hero-sub">Uzak sunucudaki application.properties dosyasını okur ve düzenler</div>
+          </div>
+        </div>
+        <div class="help-steps">
+          <div class="help-step">
+            <div class="help-step-num">1</div>
+            <div>
+              <div class="help-step-title">Sunucu Seçin</div>
+              <div class="help-step-desc">Sol panelden yönetmek istediğiniz sunucuya tıklayın. Properties otomatik yüklenir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">2</div>
+            <div>
+              <div class="help-step-title">Property Düzenleme</div>
+              <div class="help-step-desc">Tabloda bir satırın sağındaki <span class="help-badge"><i class="fas fa-pencil-alt"></i></span> kalem ikonuna tıklayın. Yeni değeri girip <strong>Kaydet</strong>'e basın. Her kayıtta sunucuda otomatik <code>.bak</code> yedeği oluşturulur.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">3</div>
+            <div>
+              <div class="help-step-title">Yeni Property Ekleme</div>
+              <div class="help-step-desc">Sağ üstteki <span class="help-badge-primary"><i class="fas fa-plus"></i> Ekle</span> butonuna basın. Key ve value girin, kaydedin.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">4</div>
+            <div>
+              <div class="help-step-title">Filtreleme & Dışa Aktarma</div>
+              <div class="help-step-desc">Tablonun üstündeki arama kutusuyla key veya value içinde anlık filtreleme yapın. <strong>Dışa Aktar</strong> butonu tüm property'leri CSV olarak indirir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">5</div>
+            <div>
+              <div class="help-step-title">Şablonlar</div>
+              <div class="help-step-desc">Sık kullandığınız property gruplarını şablon olarak kaydedin. <span class="help-badge"><i class="fas fa-bookmark"></i> Şablonlar</span> butonundan tek tıkla uygulayın.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1: Servis -->
+      <div class="help-section" id="helpTab1">
+        <div class="help-hero" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+          <i class="fas fa-power-off"></i>
+          <div>
+            <div class="help-hero-title">Servis Kontrolü</div>
+            <div class="help-hero-sub">FYS servisini başlatın, durdurun veya yeniden başlatın</div>
+          </div>
+        </div>
+        <div class="help-steps">
+          <div class="help-step">
+            <div class="help-step-num" style="background:#16a34a">▶</div>
+            <div>
+              <div class="help-step-title">Başlat</div>
+              <div class="help-step-desc">Servis durdurulmuşsa yeşil <strong>Başlat</strong> butonu ile çalıştırın. İşlem tamamlanınca durum rozeti güncellenir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num" style="background:#dc2626">■</div>
+            <div>
+              <div class="help-step-title">Durdur</div>
+              <div class="help-step-desc">Kırmızı <strong>Durdur</strong> butonuna basın. Admin şifresiyle giriş yapılmamışsa onay kodu istenir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num" style="background:#d97706">↺</div>
+            <div>
+              <div class="help-step-title">Restart</div>
+              <div class="help-step-desc">Config değişikliği sonrasında servisi yeniden başlatmak için turuncu <strong>Restart</strong> butonunu kullanın.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">i</div>
+            <div>
+              <div class="help-step-title">Durum Rozeti</div>
+              <div class="help-step-desc">Sunucu adının yanındaki renkli rozet anlık servis durumunu gösterir: <span style="color:#4ade80;font-weight:600">● active</span> &nbsp;|&nbsp; <span style="color:#f87171;font-weight:600">● inactive</span> &nbsp;|&nbsp; <span style="color:#fb923c;font-weight:600">● failed</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2: Loglar -->
+      <div class="help-section" id="helpTab2">
+        <div class="help-hero" style="background:linear-gradient(135deg,#064e3b,#065f46)">
+          <i class="fas fa-terminal"></i>
+          <div>
+            <div class="help-hero-title">Canlı Log İzleme</div>
+            <div class="help-hero-sub">Sunucunun log dosyasını gerçek zamanlı takip edin</div>
+          </div>
+        </div>
+        <div class="help-steps">
+          <div class="help-step">
+            <div class="help-step-num">1</div>
+            <div>
+              <div class="help-step-title">Bağlan</div>
+              <div class="help-step-desc"><strong>Loglar</strong> sekmesine geçin, <span class="help-badge-success"><i class="fas fa-play"></i> Bağlan</span> butonuna basın. Bağlantı kurulunca log satırları akmaya başlar.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">2</div>
+            <div>
+              <div class="help-step-title">Filtreleme</div>
+              <div class="help-step-desc"><strong>ERROR</strong>, <strong>WARN</strong>, <strong>INFO</strong> butonlarıyla sadece ilgili satırları görün. Arama kutusuna yazdığınızda satırlar anlık filtrelenir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">3</div>
+            <div>
+              <div class="help-step-title">Otomatik Kaydır</div>
+              <div class="help-step-desc"><strong>Otomatik kaydır</strong> kutucuğu işaretliyken ekran her yeni satırda en alta kayar. Geçmiş satırlara bakmak için işareti kaldırın.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">4</div>
+            <div>
+              <div class="help-step-title">Bağlantıyı Kes</div>
+              <div class="help-step-desc">Kırmızı <strong>Kes</strong> butonuyla log akışını durdurun. Ekrandaki satırlar silinmez, incelemeye devam edebilirsiniz.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3: Sistem -->
+      <div class="help-section" id="helpTab3">
+        <div class="help-hero" style="background:linear-gradient(135deg,#713f12,#92400e)">
+          <i class="fas fa-microchip"></i>
+          <div>
+            <div class="help-hero-title">Sistem Bilgisi</div>
+            <div class="help-hero-sub">Sunucunun anlık kaynak kullanımını izleyin</div>
+          </div>
+        </div>
+        <div class="help-steps">
+          <div class="help-step">
+            <div class="help-step-num">1</div>
+            <div>
+              <div class="help-step-title">Sistem Sekmesi</div>
+              <div class="help-step-desc">Bir sunucu seçtikten sonra <strong>Sistem</strong> sekmesine tıklayın. SSH üzerinden anlık veriler çekilir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">2</div>
+            <div>
+              <div class="help-step-title">Metrik Göstergeler</div>
+              <div class="help-step-desc">
+                <strong>CPU</strong> — işlemci yük yüzdesi (load average dahil)<br>
+                <strong>RAM</strong> — kullanılan / toplam bellek<br>
+                <strong>Disk (/)</strong> — kök dizin doluluk oranı
+              </div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">3</div>
+            <div>
+              <div class="help-step-title">Renk Uyarıları</div>
+              <div class="help-step-desc">Göstergeler doluluk oranına göre renk değiştirir: <span style="color:#1D9E75;font-weight:600">Yeşil</span> normal · <span style="color:#EF9F27;font-weight:600">Sarı</span> dikkat (%60+) · <span style="color:#E24B4A;font-weight:600">Kırmızı</span> kritik (%80+)</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">4</div>
+            <div>
+              <div class="help-step-title">Yenile</div>
+              <div class="help-step-desc">Sağ üstteki <strong>Yenile</strong> butonuyla verileri güncelleyin. Veriler otomatik yenilenmez, manuel tetiklenir.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4: Arama & Diff -->
+      <div class="help-section" id="helpTab4">
+        <div class="help-hero" style="background:linear-gradient(135deg,#1e293b,#334155)">
+          <i class="fas fa-search"></i>
+          <div>
+            <div class="help-hero-title">Global Arama & Karşılaştırma</div>
+            <div class="help-hero-sub">Tüm sunucularda arayın, iki sunucuyu yan yana karşılaştırın</div>
+          </div>
+        </div>
+        <div class="help-steps">
+          <div class="help-step">
+            <div class="help-step-num"><i class="fas fa-search" style="font-size:10px"></i></div>
+            <div>
+              <div class="help-step-title">Global Arama</div>
+              <div class="help-step-desc">Header'daki <strong>Ara</strong> butonuna basın. Arama kutusuna key veya value girin. Tüm sunucular <strong>aynı anda paralel</strong> sorgulanır, eşleşmeler makine bazında listelenir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num"><i class="fas fa-code-branch" style="font-size:10px"></i></div>
+            <div>
+              <div class="help-step-title">Makine Karşılaştırma (Diff)</div>
+              <div class="help-step-desc">Header'daki <strong>Karşılaştır</strong> butonuna basın. İki sunucu seçin ve <strong>Karşılaştır</strong>'a tıklayın.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">i</div>
+            <div>
+              <div class="help-step-title">Diff Renk Kodu</div>
+              <div class="help-step-desc">
+                <span style="color:#b91c1c;font-weight:600">■ Kırmızı</span> — sadece A'da var<br>
+                <span style="color:#1e40af;font-weight:600">■ Mavi</span> — sadece B'de var<br>
+                <span style="color:#92400e;font-weight:600">■ Turuncu</span> — her ikisinde var ama değer farklı<br>
+                <span style="color:#166534;font-weight:600">■ Yeşil</span> — aynı
+              </div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">i</div>
+            <div>
+              <div class="help-step-title">Pencere Kontrolü</div>
+              <div class="help-step-desc">Arama ve diff pencereleri başlıktan sürüklenebilir, sağ alt köşeden boyutlandırılabilir.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5: Onay Sistemi -->
+      <div class="help-section" id="helpTab5">
+        <div class="help-hero" style="background:linear-gradient(135deg,#7f1d1d,#991b1b)">
+          <i class="fas fa-shield-alt"></i>
+          <div>
+            <div class="help-hero-title">Servis Onay Sistemi</div>
+            <div class="help-hero-sub">Durdur ve Restart işlemleri admin onayı gerektirir</div>
+          </div>
+        </div>
+        <div class="help-steps">
+          <div class="help-step">
+            <div class="help-step-num">1</div>
+            <div>
+              <div class="help-step-title">Talep Oluşturun (Kullanıcı)</div>
+              <div class="help-step-desc">Durdur veya Restart butonuna basın. Açılan pencerede işlemi neden yaptığınızı belirtin (opsiyonel). <strong>Talep Gönder</strong>'e basın.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">2</div>
+            <div>
+              <div class="help-step-title">Admin'den Kod İsteyin</div>
+              <div class="help-step-desc">Talep gönderildikten sonra 6 haneli onay kodu giriş ekranı açılır. Admin'i arayın ve kodu isteyin. Kod <strong>5 dakika</strong> geçerlidir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num" style="background:#1e40af"><i class="fas fa-shield-alt" style="font-size:10px"></i></div>
+            <div>
+              <div class="help-step-title">Admin: Kodu Görüntüleme</div>
+              <div class="help-step-desc">Admin, header'daki 🔔 zil ikonuna tıklar. Bekleyen talepler listelenir ve her talebin altında onay kodu görünür. Kodu kullanıcıya sözlü olarak iletir veya reddeder.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">3</div>
+            <div>
+              <div class="help-step-title">Kodu Girin ve Çalıştırın</div>
+              <div class="help-step-desc">Adminden aldığınız 6 haneli kodu girin, <strong>Onayla ve Çalıştır</strong>'a basın. Kod doğruysa işlem gerçekleştirilir.</div>
+            </div>
+          </div>
+          <div class="help-step">
+            <div class="help-step-num">i</div>
+            <div>
+              <div class="help-step-title">Admin Girişi</div>
+              <div class="help-step-desc">Admin şifresiyle giriş yapıldığında onay adımı atlanır, işlemler doğrudan gerçekleştirilir. Admin şifresini sistem yöneticinizden öğrenebilirsiniz.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════ ONAY TALEP MODAL (kullanıcı) ══════ -->
+<div class="overlay hidden" id="approvalRequestOverlay">
+  <div class="modal-box" style="max-width:400px;border-radius:16px;overflow:hidden;padding:0">
+
+    <!-- Renkli üst şerit -->
+    <div id="approvalReqBanner" style="padding:20px 22px 16px;display:flex;align-items:flex-start;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div id="approvalReqIconWrap" style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0">
+          <i id="approvalReqIcon" class="fas fa-stop"></i>
+        </div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff;line-height:1.2" id="approvalReqTitle">Servisi Durdur</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px">Admin onayı gerekiyor</div>
+        </div>
+      </div>
+      <button onclick="closeM('approvalRequestOverlay')"
+        style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- İçerik -->
+    <div style="padding:16px 22px 20px;display:flex;flex-direction:column;gap:14px;background:var(--card)">
+
+      <!-- Detay satırları -->
+      <div style="background:var(--card2);border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:7px"><i class="fas fa-server" style="font-size:11px"></i> Sunucu</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text)" id="approvalReqMachine">—</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:7px"><i class="fas fa-bolt" style="font-size:11px"></i> İşlem</span>
+          <span style="font-size:13px;font-weight:700" id="approvalReqAction">—</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px">
+          <span style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:7px"><i class="fas fa-cog" style="font-size:11px"></i> Servis</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text)" id="approvalReqService">—</span>
+        </div>
+      </div>
+
+      <!-- Not alanı -->
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);display:block;margin-bottom:6px">
+          Açıklama <span style="font-weight:400;text-transform:none;letter-spacing:0">(opsiyonel)</span>
+        </label>
+        <textarea id="approvalReqNote" rows="2"
+          placeholder="Örn: Bakım için kapatılacak..."
+          style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;background:var(--card2);color:var(--text);outline:none;resize:none;transition:border-color .2s"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      </div>
+
+      <!-- Butonlar -->
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-outline btn-sm" onclick="closeM('approvalRequestOverlay')">İptal</button>
+        <button id="approvalReqSubmitBtn" class="btn btn-sm" onclick="submitApprovalRequest()"
+          style="color:#fff;border:none;font-weight:600;display:flex;align-items:center;gap:6px">
+          <i class="fas fa-paper-plane"></i> Talep Gönder
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ KOD GİRİŞ MODAL (kullanıcı) ══════ -->
+<div class="overlay hidden" id="approvalCodeOverlay">
+  <div class="modal-box" style="max-width:360px;border-radius:16px;overflow:hidden;padding:0">
+
+    <!-- Üst şerit -->
+    <div style="padding:20px 22px 16px;background:linear-gradient(135deg,#1e40af,#1d4ed8);display:flex;align-items:flex-start;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff">
+          <i class="fas fa-key"></i>
+        </div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff">Onay Kodu</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px">Adminden aldığınız kodu girin</div>
+        </div>
+      </div>
+      <button onclick="closeM('approvalCodeOverlay')"
+        style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- İçerik -->
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:16px;background:var(--card)">
+
+      <!-- Süre uyarısı -->
+      <div style="display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:9px;padding:10px 13px;border:1px solid var(--border)">
+        <i class="fas fa-clock" style="color:#d97706;font-size:13px"></i>
+        <span style="font-size:12px;color:var(--text-muted)">
+          <strong id="approvalCodeExpiry" style="color:var(--text)">—</strong> saatine kadar geçerli
+        </span>
+      </div>
+
+      <!-- Kod input -->
+      <div style="text-align:center">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:10px">6 Haneli Onay Kodu</div>
+        <input id="approvalCodeInput" type="text" maxlength="6" inputmode="numeric"
+          placeholder="······"
+          style="width:100%;height:56px;border:2px solid var(--border);border-radius:12px;
+                 font-size:28px;font-weight:700;letter-spacing:12px;text-align:center;
+                 font-family:'Courier New',monospace;background:var(--card2);color:var(--text);
+                 outline:none;transition:border-color .2s;padding:0 10px"
+          onfocus="this.style.borderColor='#1d4ed8'" onblur="this.style.borderColor='var(--border)'"
+          oninput="this.value=this.value.replace(/\D/g,'')"
+          onkeydown="if(event.key==='Enter')submitApprovalCode()">
+      </div>
+
+      <!-- Butonlar -->
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="closeM('approvalCodeOverlay')">İptal</button>
+        <button class="btn btn-sm" style="flex:2;background:#1d4ed8;color:#fff;border:none;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"
+          onclick="submitApprovalCode()">
+          <i class="fas fa-check"></i> Onayla ve Çalıştır
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ ADMİN ONAY PANELİ ══════ -->
+<div class="overlay hidden" id="approvalPanelOverlay">
+  <div class="modal-box" style="max-width:540px;border-radius:16px;overflow:hidden;padding:0">
+
+    <!-- Üst şerit -->
+    <div style="padding:20px 22px 16px;background:linear-gradient(135deg,#1e293b,#334155);display:flex;align-items:flex-start;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff">
+          <i class="fas fa-shield-alt"></i>
+        </div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff">Onay Talepleri</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px">Kodu kullanıcıya sözlü olarak iletin</div>
+        </div>
+      </div>
+      <button onclick="closeM('approvalPanelOverlay')"
+        style="background:rgba(255,255,255,.12);border:none;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Liste -->
+    <div style="background:var(--card);max-height:420px;overflow-y:auto" id="approvalPanelBody">
+      <div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px">
+        <i class="fas fa-check-circle" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px"></i>
+        Bekleyen talep yok
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script>
@@ -1003,9 +1475,12 @@ const S = {
   logLineCount:   0,
   logFilter:      'ALL',
   logSearch:      '',
-  logHistoryLines: 0,    // kaç geçmiş satır istendi
-  logHistReceived: 0,    // kaç geçmiş satır geldi
-  logLiveStarted:  false, // geçmiş bitti, canlıya geçildi mi
+  isAdmin:         false, // admin mi?
+  approval: {            // aktif onay talebi
+    requestId: null,
+    action:    null,
+    expiresAt: null,
+  },
 };
 
 // ══════════════════════════════════════════════════════
@@ -1045,12 +1520,14 @@ async function init() {
       showLogin();
       return;
     }
+    S.isAdmin = !!data.isAdmin;
   } catch (e) {
     showLogin();
     return;
   }
 
   await loadApp();
+  applyAdminUI();
 }
 
 async function loadApp() {
@@ -1088,7 +1565,9 @@ async function doLogin() {
     const data = await res.json();
     if (data.success) {
       document.getElementById('loginPass').value = '';
+      S.isAdmin = !!data.isAdmin;
       await loadApp();
+      applyAdminUI();
     } else {
       showLoginError(data.error || 'Şifre hatalı');
     }
@@ -1289,6 +1768,19 @@ function toggleDiffSection(id, headEl) {
 // ══════════════════════════════════════════════════════
 // SEARCH — GLOBAL ARAMA
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// KULLANIM KILAVUZU
+// ══════════════════════════════════════════════════════
+function openHelp() {
+  document.getElementById('helpOverlay').classList.remove('hidden');
+  switchHelpTab(0);
+}
+
+function switchHelpTab(idx) {
+  document.querySelectorAll('.help-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.help-section').forEach((s, i) => s.classList.toggle('active', i === idx));
+}
+
 function openSearch() {
   document.getElementById('searchInput').value = '';
   document.getElementById('searchSummary').style.display = 'none';
@@ -1501,6 +1993,197 @@ async function fetchServiceStatus() {
   } catch (e) {
     setSvcBadge('unknown');
     setServiceBtns(true);
+  }
+}
+
+// ── Servis buton tıklama — admin: direkt, kullanıcı: onay akışı ──────────────
+function svcClick(action) {
+  if (!S.currentId) return;
+  if (S.isAdmin) {
+    serviceAction(action);
+  } else {
+    openApprovalRequest(action);
+  }
+}
+
+// ── Admin UI göster/gizle ─────────────────────────────────────────────────────
+function applyAdminUI() {
+  const bell = document.getElementById('btnAdminBell');
+  if (S.isAdmin) {
+    bell.style.display = 'flex';
+    refreshBellBadge();
+  } else {
+    bell.style.display = 'none';
+  }
+}
+
+// ── Onay talebi modal aç (kullanıcı) ─────────────────────────────────────────
+function openApprovalRequest(action) {
+  const m = S.machines.find(x => x.id === S.currentId);
+  if (!m) return;
+
+  const cfg = {
+    start:   { label: 'Servisi Başlat',        icon: 'fa-play',    bg: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#16a34a' },
+    stop:    { label: 'Servisi Durdur',         icon: 'fa-stop',    bg: 'linear-gradient(135deg,#dc2626,#b91c1c)', color: '#dc2626' },
+    restart: { label: 'Servisi Yeniden Başlat', icon: 'fa-redo',    bg: 'linear-gradient(135deg,#d97706,#b45309)', color: '#d97706' },
+  };
+  const c = cfg[action];
+
+  document.getElementById('approvalReqBanner').style.background   = c.bg;
+  document.getElementById('approvalReqIcon').className             = 'fas ' + c.icon;
+  document.getElementById('approvalReqTitle').textContent          = c.label;
+  document.getElementById('approvalReqMachine').textContent        = m.name;
+  document.getElementById('approvalReqService').textContent        = m.serviceName || 'fys';
+  const actionEl = document.getElementById('approvalReqAction');
+  actionEl.textContent = c.label;
+  actionEl.style.color = c.color;
+  const submitBtn = document.getElementById('approvalReqSubmitBtn');
+  submitBtn.style.background = c.color;
+  document.getElementById('approvalReqNote').value = '';
+  S.approval.action = action;
+  document.getElementById('approvalRequestOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('approvalReqNote').focus(), 100);
+}
+
+// ── Onay talebini gönder ──────────────────────────────────────────────────────
+async function submitApprovalRequest() {
+  const note = document.getElementById('approvalReqNote').value.trim();
+  const m    = S.machines.find(x => x.id === S.currentId);
+  if (!m) return;
+
+  try {
+    const res  = await fetch(apiUrl('/api/approval/request'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ machineId: S.currentId, action: S.approval.action, note })
+    });
+    const data = await res.json();
+    if (data.success) {
+      S.approval.requestId = data.requestId;
+      S.approval.expiresAt = data.expiresAt;
+      closeM('approvalRequestOverlay');
+      // Kod giriş modal'ını aç
+      document.getElementById('approvalCodeExpiry').textContent = data.expiresAt;
+      document.getElementById('approvalCodeInput').value = '';
+      document.getElementById('approvalCodeOverlay').classList.remove('hidden');
+      setTimeout(() => document.getElementById('approvalCodeInput').focus(), 100);
+      if (S.isAdmin) refreshBellBadge();
+    } else {
+      toast(data.error || 'Talep gönderilemedi', 'error');
+    }
+  } catch (e) {
+    toast('Hata: ' + e.message, 'error');
+  }
+}
+
+// ── Kodu gir ve işlemi çalıştır ───────────────────────────────────────────────
+async function submitApprovalCode() {
+  const code = document.getElementById('approvalCodeInput').value.trim();
+  if (code.length !== 6) { toast('6 haneli kod giriniz', 'warning'); return; }
+  if (!S.approval.requestId) { toast('Aktif talep bulunamadı', 'error'); return; }
+
+  try {
+    const res  = await fetch(apiUrl('/api/approval/execute'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: S.approval.requestId, code })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeM('approvalCodeOverlay');
+      setSvcBadge(data.status);
+      toast(data.message, 'success');
+      S.approval = { requestId: null, action: null, expiresAt: null };
+    } else {
+      toast(data.error || 'Hatalı kod', 'error');
+      document.getElementById('approvalCodeInput').value = '';
+      document.getElementById('approvalCodeInput').focus();
+    }
+  } catch (e) {
+    toast('Hata: ' + e.message, 'error');
+  }
+}
+
+// ── Admin: onay panelini aç ───────────────────────────────────────────────────
+async function openApprovalPanel() {
+  document.getElementById('approvalPanelOverlay').classList.remove('hidden');
+  await loadApprovalPanel();
+}
+
+async function loadApprovalPanel() {
+  const body = document.getElementById('approvalPanelBody');
+  body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)"><span class="spinner dark"></span></div>';
+  try {
+    const res  = await fetch(apiUrl('/api/approval/pending'));
+    const data = await res.json();
+    const reqs = data.requests || [];
+    refreshBellBadge(reqs.length);
+
+    if (reqs.length === 0) {
+      body.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px">
+        <i class="fas fa-check-circle" style="font-size:32px;opacity:.3;display:block;margin-bottom:10px"></i>
+        Bekleyen talep yok</div>`;
+      return;
+    }
+
+    const actionColor = { START:'#16a34a', STOP:'#b91c1c', RESTART:'#d97706' };
+    const actionIcon  = { START:'fa-play',  STOP:'fa-stop',  RESTART:'fa-redo' };
+    const actionLabel = { START:'Başlat',   STOP:'Durdur',   RESTART:'Yeniden Başlat' };
+
+    body.innerHTML = reqs.map(r => `
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="width:36px;height:36px;border-radius:9px;background:${actionColor[r.action]}22;
+                    display:flex;align-items:center;justify-content:center;color:${actionColor[r.action]};font-size:14px;flex-shrink:0">
+          <i class="fas ${actionIcon[r.action]}"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${r.machineName} — ${actionLabel[r.action]}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${r.requestedAt} — ${r.expiresAt} saatine kadar geçerli</div>
+          ${r.note ? `<div style="font-size:11px;color:var(--text-muted);font-style:italic;margin-top:2px">"${r.note}"</div>` : ''}
+          <div style="margin-top:6px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;color:var(--text-muted)">Onay kodu:</span>
+            <span style="font-size:18px;font-weight:700;font-family:'Courier New',monospace;letter-spacing:4px;
+                         color:var(--text);background:var(--card2);padding:2px 10px;border-radius:6px;
+                         border:1.5px dashed var(--border-mid)">${r.code}</span>
+          </div>
+        </div>
+        <button onclick="rejectApproval('${r.id}')"
+          style="height:30px;padding:0 12px;border:1px solid #f09595;border-radius:7px;
+                 background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0">
+          Reddet
+        </button>
+      </div>`).join('');
+  } catch (e) {
+    body.innerHTML = `<div style="padding:20px;color:var(--danger)">Hata: ${e.message}</div>`;
+  }
+}
+
+async function rejectApproval(requestId) {
+  try {
+    await fetch(apiUrl(`/api/approval/reject/${requestId}`), { method: 'POST' });
+    await loadApprovalPanel();
+  } catch (e) {
+    toast('Hata: ' + e.message, 'error');
+  }
+}
+
+function refreshBellBadge(count) {
+  const bell  = document.getElementById('btnAdminBell');
+  const badge = document.getElementById('bellBadge');
+  if (!bell) return;
+  if (count === undefined) {
+    // Sunucudan çek
+    fetch(apiUrl('/api/approval/pending'))
+      .then(r => r.json())
+      .then(d => refreshBellBadge((d.requests || []).length))
+      .catch(() => {});
+    return;
+  }
+  if (count > 0) {
+    badge.textContent    = count;
+    badge.style.display  = 'flex';
+  } else {
+    badge.style.display  = 'none';
   }
 }
 
@@ -2007,14 +2690,7 @@ function connectLog() {
   if (!m || !m.logFile) { toast('Bu makine için logFile tanımlı değil', 'warning'); return; }
 
   clearLog();
-
-  const histLines = parseInt(document.getElementById('logHistLines').value) || 1000;
-  S.logHistoryLines  = histLines;
-  S.logHistReceived  = 0;
-  S.logLiveStarted   = false;
-
   const params = new URLSearchParams(resolveCredsFor(S.currentId));
-  params.set('lines', histLines);
   const source = new EventSource(apiUrl(`/api/logs/${S.currentId}?${params}`));
   S.logSource  = source;
 
@@ -2022,19 +2698,6 @@ function connectLog() {
   setLogText('Bağlanıyor…');
   document.getElementById('btnLogConnect').style.display    = 'none';
   document.getElementById('btnLogDisconnect').style.display = '';
-  document.getElementById('logStatusBar').style.display     = 'flex';
-
-  // Meta event — kaç geçmiş satır geleceğini bildirir
-  source.addEventListener('meta', (e) => {
-    try {
-      const meta = JSON.parse(e.data);
-      S.logHistoryLines = meta.historyLines || 0;
-      if (S.logHistoryLines > 0) {
-        document.getElementById('logSbHist').textContent =
-          `${S.logHistoryLines.toLocaleString('tr-TR')} geçmiş satır yükleniyor…`;
-      }
-    } catch (_) {}
-  });
 
   source.onopen = () => {
     setLogDot('connected');
@@ -2043,30 +2706,12 @@ function connectLog() {
     if (emp) emp.remove();
   };
 
-  // Geçmiş satırlar — "hist" event
-  source.addEventListener('hist', (e) => {
-    S.logHistReceived++;
-    appendLogLine(e.data, null, true); // isHist=true
-    // Geçmiş bitince status güncelle
-    if (S.logHistReceived >= S.logHistoryLines && !S.logLiveStarted) {
-      S.logLiveStarted = true;
-      _setLiveStatus();
-      scrollLogBottom();
-    }
-  });
-
-  // Canlı satırlar — "message" event (default)
   source.onmessage = (e) => {
-    if (!S.logLiveStarted) {
-      S.logLiveStarted = true;
-      _setLiveStatus();
-      scrollLogBottom();
-    }
-    appendLogLine(e.data, null, false); // isHist=false
+    appendLogLine(e.data);
   };
 
   source.addEventListener('sse-error', (e) => {
-    appendLogLine('⚠ Sunucu hatası: ' + e.data, 'err', false);
+    appendLogLine('⚠ Sunucu hatası: ' + e.data, 'err');
     _logDisconnect();
   });
 
@@ -2075,17 +2720,6 @@ function connectLog() {
     setLogText('Bağlantı kesildi');
     _logDisconnect();
   };
-}
-
-function _setLiveStatus() {
-  const histEl = document.getElementById('logSbHist');
-  const sepEl  = document.getElementById('logSbSep');
-  const liveEl = document.getElementById('logSbLive');
-  if (S.logHistoryLines > 0) {
-    histEl.textContent = `${S.logHistReceived.toLocaleString('tr-TR')} geçmiş satır yüklendi`;
-    sepEl.style.display  = '';
-  }
-  liveEl.style.display = '';
 }
 
 function scrollLogBottom() {
@@ -2113,12 +2747,9 @@ function _logDisconnect() {
 function clearLog() {
   document.getElementById('logOutput').innerHTML =
     '<div class="log-empty" id="logEmpty"><i class="fas fa-terminal"></i><p>Bağlan\'a tıklayarak canlı log akışını başlatın</p></div>';
-  S.logLineCount    = 0;
-  S.logHistReceived = 0;
-  S.logLiveStarted  = false;
-  S.logSearch       = '';
+  S.logLineCount = 0;
+  S.logSearch    = '';
   document.getElementById('logLineCount').textContent = '0 satır';
-  document.getElementById('logStatusBar').style.display = 'none';
   if (document.getElementById('logSearch')) document.getElementById('logSearch').value = '';
   setLogFilter('ALL');
 }
@@ -2153,13 +2784,12 @@ function filterLogText(q) {
 
 const LOG_MAX = 8000;
 
-function appendLogLine(text, forceClass, isHist) {
+function appendLogLine(text, forceClass) {
   const emp = document.getElementById('logEmpty');
   if (emp) emp.remove();
 
   const out = document.getElementById('logOutput');
 
-  // Limit aşılırsa en eski satırı sil
   if (S.logLineCount >= LOG_MAX) {
     const first = out.querySelector('.log-line');
     if (first) { first.remove(); S.logLineCount--; }
@@ -2174,11 +2804,8 @@ function appendLogLine(text, forceClass, isHist) {
       : u.includes(' INFO ') || u.includes('[INFO]') ? 'info'
       : '');
   if (cls) el.classList.add(cls);
-  // Geçmiş satırları soluk göster
-  if (isHist) el.classList.add('hist');
   el.textContent = text + '\n';
 
-  // Metin araması aktifse hide uygula
   if (S.logSearch && !text.toLowerCase().includes(S.logSearch)) {
     el.classList.add('search-hide');
   }
@@ -2187,9 +2814,8 @@ function appendLogLine(text, forceClass, isHist) {
   S.logLineCount++;
   document.getElementById('logLineCount').textContent = S.logLineCount.toLocaleString('tr-TR') + ' satır';
 
-  // Sadece canlı satırlarda veya geçmiş yükleme tamamlanmışsa otomatik kaydır
   const autoScrollEl = document.getElementById('autoScroll');
-  if (autoScrollEl && autoScrollEl.checked && (!isHist || S.logLiveStarted)) {
+  if (autoScrollEl && autoScrollEl.checked) {
     out.scrollTop = out.scrollHeight;
   }
 }
