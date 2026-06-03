@@ -175,14 +175,14 @@ Sunucu listesi `machines.json` dosyasında tanımlanır. Docker kurulumunda bu d
 [
   {
     "id": "machine-01",
-    "name": "FYS-PROD",
-    "host": "10.5.53.191",
+    "name": "****",
+    "host": "***",
     "port": 22,
     "environment": "PROD",
     "description": "Prod sunucusu",
-    "serviceName": "fys",
-    "sudoUser": "flexcity",
-    "logFile": "/home/flexcity/java/appservers/apache-tomcat-9.0.78/logs/catalina.out",
+    "serviceName": "***",
+    "sudoUser": "****",
+    "logFile": "***",
     "username": "kullanici",
     "password": "sifre"
   }
