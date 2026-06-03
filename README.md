@@ -25,7 +25,6 @@ Uzak Linux sunucularındaki `application.properties` dosyalarını SSH üzerinde
 
 FlexCity Config Manager, 13 farklı sunucu ortamının (prod, test, dev, geçiş, vezne, vs.) yapılandırma dosyalarını merkezi olarak yönetmek için geliştirilmiştir. Sunucuya SSH ile bağlanıp terminal açmak yerine, şirket ağındaki herhangi bir bilgisayardan tarayıcı aracılığıyla tüm işlemler gerçekleştirilebilir.
 
-**Erişim adresi:** `http://BTMERTANERYLMZ:30050`
 
 ---
 
@@ -113,8 +112,6 @@ mvn package -DskipTests
 # 2. Docker image oluştur ve container'ları başlat
 docker compose up -d --build
 ```
-
-Uygulama `http://BTMERTANERYLMZ:30050` adresinde erişilebilir olur.
 
 #### Günlük kullanım komutları
 
