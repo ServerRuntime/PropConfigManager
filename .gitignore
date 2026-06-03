@@ -13,11 +13,14 @@ target/
 *.classpath
 *.project
 .settings/
+target/**
+**/target/
 
 # OS
 .DS_Store
 Thumbs.db
 
+*.lst
 # Logs
 *.log
 logs/

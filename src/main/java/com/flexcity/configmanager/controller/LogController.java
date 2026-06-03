@@ -42,7 +42,8 @@ public class LogController {
     public SseEmitter streamLogs(
             @PathVariable String machineId,
             @RequestParam(required = false) String username,
-            @RequestParam(required = false) String password) {
+            @RequestParam(required = false) String password,
+            @RequestParam(defaultValue = "1000") int lines) {
 
         // 0L = timeout yok; bağlantı kopana kadar açık kalır
         SseEmitter emitter = new SseEmitter(0L);
@@ -65,23 +66,39 @@ public class LogController {
             return emitter;
         }
 
-        AtomicBoolean stopped = new AtomicBoolean(false);
+        // lines parametresini güvenli aralıkta tut (0 = sadece canlı, max 10000)
+        final int historyLines = Math.max(0, Math.min(lines, 10000));
+
+        AtomicBoolean stopped   = new AtomicBoolean(false);
+        // Geçmiş satırların bitip canlıya geçildiğini takip et
+        // tail -n X -f önce X satır basar, sonra yeni gelenler akar.
+        // İlk historyLines satıra kadar "hist" event'i, sonrasına "message" gönderilir.
+        java.util.concurrent.atomic.AtomicInteger sentCount = new java.util.concurrent.atomic.AtomicInteger(0);
+
         emitter.onCompletion(() -> stopped.set(true));
         emitter.onTimeout(()    -> stopped.set(true));
         emitter.onError(e       -> stopped.set(true));
 
-        final String user = creds[0];
-        final String pass = creds[1];
+        final String user  = creds[0];
+        final String pass  = creds[1];
 
         executor.submit(() -> {
             try {
-                log.info("Log stream başladı: {} -> {}", m.getName(), m.getLogFile());
+                log.info("Log stream başladı: {} -> {} (geçmiş: {} satır)", m.getName(), m.getLogFile(), historyLines);
+                // Önce metadata gönder
+                emitter.send(SseEmitter.event().name("meta")
+                        .data("{\"historyLines\":" + historyLines + "}"));
+
                 sshService.tailLog(
                         m.getHost(), m.getPort(), user, pass,
                         m.getSudoUser(), m.getLogFile(),
+                        historyLines,
                         line -> {
                             try {
-                                emitter.send(SseEmitter.event().data(line));
+                                int n = sentCount.incrementAndGet();
+                                // historyLines > 0 ise ilk N satır geçmişten geldi → "hist" event
+                                String eventName = (historyLines > 0 && n <= historyLines) ? "hist" : "message";
+                                emitter.send(SseEmitter.event().name(eventName).data(line));
                             } catch (Exception ex) {
                                 stopped.set(true);
                             }

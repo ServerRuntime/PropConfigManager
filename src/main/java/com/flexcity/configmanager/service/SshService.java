@@ -358,9 +358,12 @@ public class SshService {
 
     public void tailLog(String host, int port, String username, String password,
                         String sudoUser, String logFile,
+                        int historyLines,
                         Consumer<String> lineCallback,
                         AtomicBoolean stopped) throws Exception {
         Session session = openSession(host, port, username, password);
+        // historyLines=0 → -n 0 (hiç geçmiş yok, sadece yeni satırlar), >0 → son N satır
+        String nArg = "-n " + historyLines + " ";
         try {
             // sudo -u <user> iznini önceden test et; başarısızsa root sudo kullan
             String tailCmd;
@@ -369,13 +372,13 @@ public class SshService {
                 String test = sudoExec(session, "sudo -S -u " + sudoUser + " echo ok", password);
                 if (isSudoPermissionError(test)) {
                     log.warn("[SSH] tailLog: 'sudo -u {}' izinli değil, root sudo kullanılıyor", sudoUser);
-                    tailCmd = "sudo -S tail -f \"" + logFile + "\" 2>&1";
+                    tailCmd = "sudo -S tail " + nArg + "-f \"" + logFile + "\" 2>&1";
                 } else {
-                    tailCmd = "sudo -S -u " + sudoUser + " tail -f \"" + logFile + "\" 2>&1";
+                    tailCmd = "sudo -S -u " + sudoUser + " tail " + nArg + "-f \"" + logFile + "\" 2>&1";
                 }
                 sendPassword = true;
             } else {
-                tailCmd = "tail -f \"" + logFile + "\" 2>&1";
+                tailCmd = "tail " + nArg + "-f \"" + logFile + "\" 2>&1";
             }
 
             log.debug("[SSH] tailLog: {}", tailCmd);
