@@ -1,4 +1,4 @@
-# FlexCity Config Manager
+#Config Manager
 
 Uzak Linux sunucularındaki `application.properties` dosyalarını SSH üzerinden tarayıcıdan yönetmeye yarayan Spring Boot tabanlı bir web uygulaması.
 
