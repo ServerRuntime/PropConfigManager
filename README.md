@@ -155,7 +155,7 @@ docker compose up -d --build
 | `app.ui.password` | `1234` | UI giriş şifresi |
 | `app.machines-file` | `machines.json` | Makine listesi dosyası |
 | `app.ssh.timeout` | `10000` | SSH bağlantı zaman aşımı (ms) |
-| `app.remote.properties-path` | `/home/flexcity/.../application-env-shared.properties` | Uzak sunucudaki properties dosyası yolu |
+| `app.remote.properties-path` | `******` | Uzak sunucudaki properties dosyası yolu |
 | `logging.level.com.flexcity` | `INFO` | Log seviyesi (`DEBUG` sorun tespitinde kullanılır) |
 
 **Docker ortamında şifre değiştirmek için** `docker-compose.yml` dosyasındaki ilgili satırı düzenle:
