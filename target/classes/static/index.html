@@ -167,10 +167,7 @@
     .mi-host { font-size: 10.5px; color: rgba(255,255,255,.38); font-family: monospace; }
     .mi.active .mi-host { color: rgba(255,255,255,.65); }
     .mi-badges { display: flex; gap: 4px; margin-top: 2px; }
-    .env-badge { font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; border: 1px solid; border-radius: 4px; padding: 0 4px; line-height: 14px; }
-    .env-badge.production,
-    .env-badge.staging,
-    .env-badge.development { color: #86efac; border-color: rgba(134,239,172,.3); }
+    .env-badge { font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; border: 1px solid; border-radius: 4px; padding: 0 4px; line-height: 14px; color: #86efac; border-color: rgba(134,239,172,.3); }
     .mi.active .env-badge  { color: rgba(255,255,255,.8); border-color: rgba(255,255,255,.25); }
     .key-badge { font-size: 9px; background: rgba(37,99,235,.4); color: #93c5fd; border-radius: 4px; padding: 0 5px; line-height: 14px; font-weight: 600; }
     .mi.active .key-badge  { background: rgba(255,255,255,.25); color: #fff; }
@@ -335,6 +332,142 @@
     .tpl-save-wrap { border-top: 1px solid var(--border); padding-top: 14px; }
     .tpl-save-row { display: flex; gap: 8px; margin-top: 8px; }
 
+    /* ─── DIFF PANEL ─── */
+    .diff-overlay { position: fixed; inset: 0; background: rgba(13,27,42,.7); backdrop-filter: blur(5px); z-index: 1500; }
+    .diff-overlay.hidden { display: none; }
+    .diff-panel { position: absolute; display: flex; flex-direction: column; background: var(--card); border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.4); overflow: hidden; resize: both; min-width: 540px; min-height: 340px; max-width: 98vw; max-height: 96vh; }
+    .diff-header { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); padding: 16px 20px; display: flex; align-items: center; gap: 14px; cursor: move; user-select: none; flex-shrink: 0; }
+    .diff-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    .diff-header p  { color: rgba(255,255,255,.5); font-size: 12px; margin-top: 2px; }
+    .diff-controls { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-end; background: var(--card2); flex-shrink: 0; }
+    .diff-select-wrap { flex: 1; }
+    .diff-select-wrap label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 5px; }
+    .diff-select-wrap select { width: 100%; height: 38px; border: 1.5px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 13px; font-family: inherit; background: var(--card); color: var(--text); outline: none; cursor: pointer; }
+    .diff-select-wrap select:focus { border-color: var(--accent); }
+    .diff-body { padding: 16px 20px; flex: 1; overflow-y: auto; }
+    .diff-section { margin-bottom: 20px; }
+    .diff-section-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; cursor: pointer; user-select: none; }
+    .diff-section-head h4 { font-size: 13px; font-weight: 700; flex: 1; }
+    .diff-badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 10px; }
+    .diff-badge.only-a  { background: #fee2e2; color: #b91c1c; }
+    .diff-badge.only-b  { background: #dbeafe; color: #1e40af; }
+    .diff-badge.diff    { background: #fef3c7; color: #92400e; }
+    .diff-badge.same    { background: var(--success-bg); color: var(--success-text); }
+    html[data-theme="dark"] .diff-badge.only-a { background: #450a0a; color: #fca5a5; }
+    html[data-theme="dark"] .diff-badge.only-b { background: #1e3a5f; color: #93c5fd; }
+    html[data-theme="dark"] .diff-badge.diff   { background: #451a03; color: #fcd34d; }
+    .diff-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .diff-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .diff-table thead tr { background: var(--card2); border-bottom: 1.5px solid var(--border); }
+    .diff-table thead th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); }
+    .diff-table tbody tr { border-bottom: 1px solid var(--border); }
+    .diff-table tbody tr:last-child { border-bottom: none; }
+    .diff-table tbody td { padding: 9px 12px; vertical-align: middle; font-family: 'Courier New', monospace; word-break: break-all; }
+    .diff-table .td-key { color: var(--key-color); font-weight: 600; max-width: 200px; }
+    .diff-row-a    { background: rgba(220,38,38,.05); }
+    .diff-row-b    { background: rgba(37,99,235,.05); }
+    .diff-row-diff { background: rgba(217,119,6,.05); }
+    html[data-theme="dark"] .diff-row-a    { background: rgba(220,38,38,.08); }
+    html[data-theme="dark"] .diff-row-b    { background: rgba(37,99,235,.08); }
+    html[data-theme="dark"] .diff-row-diff { background: rgba(217,119,6,.08); }
+    .val-a { color: #b91c1c; background: #fee2e2; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .val-b { color: #1e40af; background: #dbeafe; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    html[data-theme="dark"] .val-a { color: #fca5a5; background: rgba(220,38,38,.2); }
+    html[data-theme="dark"] .val-b { color: #93c5fd; background: rgba(37,99,235,.2); }
+    .diff-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 16px; font-style: italic; }
+    .diff-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text-muted); font-size: 13px; }
+    .diff-stats { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--card2); flex-shrink: 0; }
+    .diff-stat { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+
+    /* ─── SEARCH PANEL ─── */
+    .search-overlay { position: fixed; inset: 0; background: rgba(13,27,42,.7); backdrop-filter: blur(5px); z-index: 1500; }
+    .search-overlay.hidden { display: none; }
+    .search-panel { position: absolute; display: flex; flex-direction: column; background: var(--card); border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.4); overflow: hidden; resize: both; min-width: 480px; min-height: 320px; max-width: 98vw; max-height: 96vh; }
+    .search-header { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); padding: 16px 20px; display: flex; align-items: center; gap: 14px; cursor: move; user-select: none; flex-shrink: 0; }
+    .search-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    .search-controls { padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--card2); display: flex; gap: 10px; flex-shrink: 0; }
+    .search-input-wrap { flex: 1; position: relative; }
+    .search-input-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 15px; pointer-events: none; }
+    .search-input-wrap input { width: 100%; height: 42px; border: 1.5px solid var(--border); border-radius: 9px; padding: 0 14px 0 38px; font-size: 14px; font-family: inherit; background: var(--card); color: var(--text); outline: none; transition: border-color .2s; }
+    .search-input-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .search-body { padding: 16px 20px; flex: 1; overflow-y: auto; }
+    .search-result-machine { margin-bottom: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .search-result-head { padding: 10px 14px; background: var(--card2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 9px; }
+    .search-result-head strong { font-size: 13px; color: var(--text); flex: 1; }
+    .search-result-head .env-badge { font-size: 9px; }
+    .search-match-count { font-size: 11px; color: var(--text-muted); background: var(--accent-soft); color: var(--accent-text); border-radius: 999px; padding: 1px 9px; font-weight: 700; }
+    .search-match-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .search-match-table td { padding: 8px 14px; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; word-break: break-all; vertical-align: middle; }
+    .search-match-table tr:last-child td { border-bottom: none; }
+    .search-match-table .td-key { color: var(--key-color); font-weight: 600; max-width: 220px; }
+    .search-no-results { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .search-no-results i { font-size: 40px; margin-bottom: 12px; display: block; opacity: .4; }
+    .search-no-results p { font-size: 14px; font-weight: 500; }
+    .search-highlight { background: #fef08a; color: #713f12; border-radius: 3px; padding: 0 2px; }
+    html[data-theme="dark"] .search-highlight { background: rgba(254,240,138,.25); color: #fef08a; }
+    .search-empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .search-empty-state i { font-size: 44px; margin-bottom: 14px; display: block; opacity: .3; }
+    .search-empty-state p { font-size: 14px; }
+    .search-summary { padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--card2); font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+
+    /* ─── LIGHT MODE FIX: panel içindeki tüm metin renkleri explicit ─── */
+    .diff-panel, .search-panel { color: var(--text); }
+    .diff-section-head h4 { color: var(--text); }
+    .diff-stat { color: var(--text); }
+    .diff-table tbody td { color: var(--text); }
+    .diff-empty { color: var(--text-muted); }
+    .search-result-head strong { color: var(--text); }
+    .search-match-table td { color: var(--text); }
+    .search-no-results p, .search-no-results i { color: var(--text-muted); }
+    .diff-select-wrap select option { color: var(--text); background: var(--card); }
+
+    /* env-badge: sidebar için açık yeşil, kart üzerinde görünmüyor — panel içinde düzelt */
+    .diff-panel .env-badge,
+    .search-panel .env-badge { color: var(--text-muted); border-color: var(--border-mid); }
+    /* dark modda sidebar rengiyle uyumlu kalsın */
+    html[data-theme="dark"] .diff-panel .env-badge,
+    html[data-theme="dark"] .search-panel .env-badge { color: #86efac; border-color: rgba(134,239,172,.3); }
+
+    /* ─── SYSTEM TAB ─── */
+    .sys-area { display: none; flex-direction: column; overflow: hidden; flex: 1; }
+    .sys-area.visible { display: flex; }
+    .sys-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--card2); flex-shrink: 0; }
+    .sys-last-update { font-size: 11px; color: var(--text-muted); }
+    .sys-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .sys-loading { display: flex; align-items: center; gap: 10px; justify-content: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+    .sys-error { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--danger); }
+
+    .sys-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .sys-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .metric-card { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .metric-icon { font-size: 18px; color: var(--accent); }
+    .metric-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-muted); }
+    .donut-container { position: relative; width: 110px; height: 110px; }
+    .donut-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .donut-bg { fill: none; stroke: var(--card2); stroke-width: 10; }
+    .donut-fg { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray .6s ease; }
+    .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; pointer-events: none; }
+    .donut-pct { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+    .donut-sub { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+    .metric-detail { font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.7; }
+
+    .sys-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .sys-warn { color: #EF9F27; font-weight: 700; }
+    .info-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .info-rows { display: flex; flex-direction: column; }
+    .info-row-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .info-row-item:last-child { border-bottom: none; }
+    .info-row-key { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
+    .info-row-val { font-size: 12px; font-weight: 600; color: var(--text); max-width: 180px; text-align: right; word-break: break-all; }
+
+    .mount-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .mount-row:last-child { border-bottom: none; }
+    .mount-path { font-size: 12px; font-family: 'Courier New', monospace; color: var(--key-color); width: 90px; flex-shrink: 0; }
+    .mount-bar-wrap { flex: 1; height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; }
+    .mount-bar { height: 100%; border-radius: 3px; transition: width .5s ease; }
+    .mount-pct { font-size: 12px; font-weight: 700; width: 36px; text-align: right; }
+    .mount-size { font-size: 11px; color: var(--text-muted); width: 100px; text-align: right; }
+
     /* ─── SPINNER ─── */
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
     .spinner.dark { border-color: rgba(0,0,0,.15); border-top-color: var(--accent); }
@@ -490,11 +623,88 @@
   </div>
 </div>
 
+<!-- ══════════════ DİFF PANELİ ══════════════ -->
+<div class="diff-overlay hidden" id="diffOverlay" onclick="if(event.target===this)closeDiff()">
+  <div class="diff-panel" id="diffPanel">
+    <div class="diff-header" id="diffDragHandle">
+      <div class="cred-icon" style="width:40px;height:40px;flex-shrink:0"><i class="fas fa-code-branch" style="font-size:17px"></i></div>
+      <div style="flex:1">
+        <h2>Makine Karşılaştırma</h2>
+        <p>İki makinenin property dosyalarını yan yana karşılaştır — sürükle veya köşeden boyutlandır</p>
+      </div>
+      <button onclick="closeDiff()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="diff-controls">
+      <div class="diff-select-wrap">
+        <label><i class="fas fa-circle" style="color:#b91c1c;margin-right:4px"></i> Makine A</label>
+        <select id="diffSelA"></select>
+      </div>
+      <div class="diff-select-wrap">
+        <label><i class="fas fa-circle" style="color:#2563eb;margin-right:4px"></i> Makine B</label>
+        <select id="diffSelB"></select>
+      </div>
+      <button class="btn btn-primary" style="flex-shrink:0;height:38px" onclick="runDiff()">
+        <i class="fas fa-exchange-alt"></i> Karşılaştır
+      </button>
+    </div>
+    <div id="diffStats" class="diff-stats" style="display:none"></div>
+    <div class="diff-body" id="diffBody">
+      <div class="search-empty-state">
+        <i class="fas fa-code-branch"></i>
+        <p>İki makine seçip Karşılaştır'a tıklayın</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ ARAMA PANELİ ══════════════ -->
+<div class="search-overlay hidden" id="searchOverlay" onclick="if(event.target===this)closeSearch()">
+  <div class="search-panel" id="searchPanel">
+    <div class="search-header" id="searchDragHandle">
+      <div class="cred-icon" style="width:40px;height:40px;flex-shrink:0"><i class="fas fa-search" style="font-size:17px"></i></div>
+      <div style="flex:1">
+        <h2>Global Arama</h2>
+        <p>Tüm makinelerde anahtar veya değer ara — sürükle veya köşeden boyutlandır</p>
+      </div>
+      <button onclick="closeSearch()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="search-controls">
+      <div class="search-input-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" placeholder="Key veya value girin (örn: database.url, 5432)..."
+               onkeydown="if(event.key==='Enter')runSearch()" />
+      </div>
+      <button class="btn btn-primary" onclick="runSearch()" id="searchBtn">
+        <i class="fas fa-search"></i> Ara
+      </button>
+    </div>
+    <div id="searchSummary" class="search-summary" style="display:none"></div>
+    <div class="search-body" id="searchBody">
+      <div class="search-empty-state">
+        <i class="fas fa-search"></i>
+        <p>Aranacak kelimeyi girip Enter'a veya Ara'ya basın</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ APP SHELL ══════════════ -->
 <header class="app-header">
   <div class="hdr-logo"><i class="fas fa-sliders-h"></i></div>
   <div><div class="hdr-title">FlexCity Config Manager</div><sub class="hdr-sub">Remote Properties Yönetim Sistemi</sub></div>
-  <div style="margin-left:auto;display:flex;gap:8px">
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <button onclick="openSearch()" title="Global Arama"
+      style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             height:34px;padding:0 14px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;
+             display:flex;align-items:center;gap:7px;transition:background .15s;">
+      <i class="fas fa-search"></i> Ara
+    </button>
+    <button onclick="openDiff()" title="Makine Karşılaştır"
+      style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             height:34px;padding:0 14px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;
+             display:flex;align-items:center;gap:7px;transition:background .15s;">
+      <i class="fas fa-code-branch"></i> Karşılaştır
+    </button>
     <button id="themeToggle" onclick="toggleTheme()" title="Tema değiştir"
       style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
              width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;
@@ -556,6 +766,9 @@
       </button>
       <button class="tab-btn" id="tabBtnLogs" onclick="switchTab('logs')">
         <i class="fas fa-terminal"></i> Loglar
+      </button>
+      <button class="tab-btn" id="tabBtnSystem" onclick="switchTab('system')">
+        <i class="fas fa-microchip"></i> Sistem
       </button>
     </div>
 
@@ -635,6 +848,86 @@
         </div>
       </div>
     </div><!-- /logTab -->
+
+    <!-- System Tab -->
+    <div class="sys-area" id="systemTab">
+      <div class="sys-toolbar">
+        <span class="sys-last-update" id="sysLastUpdate"></span>
+        <button class="btn btn-outline btn-sm" id="btnSysRefresh" onclick="loadSystemInfo()">
+          <i class="fas fa-sync-alt"></i> Yenile
+        </button>
+      </div>
+      <div class="sys-body" id="sysBody">
+        <div class="sys-loading" id="sysLoading" style="display:none">
+          <span class="spinner dark"></span> Sistem bilgisi alınıyor…
+        </div>
+        <div class="sys-error" id="sysError" style="display:none"></div>
+
+        <!-- Metrik kartlar -->
+        <div class="sys-metrics" id="sysMetrics" style="display:none">
+          <div class="sys-card metric-card">
+            <div class="metric-icon"><i class="fas fa-microchip"></i></div>
+            <div class="metric-label">CPU</div>
+            <div class="donut-container">
+              <svg class="donut-svg" viewBox="0 0 100 100">
+                <circle class="donut-bg" cx="50" cy="50" r="38"/>
+                <circle class="donut-fg" id="donutCpu" cx="50" cy="50" r="38" data-color="teal"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct" id="cpuPct">—</div>
+                <div class="donut-sub">kullanım</div>
+              </div>
+            </div>
+            <div class="metric-detail" id="cpuDetail">—</div>
+          </div>
+
+          <div class="sys-card metric-card">
+            <div class="metric-icon"><i class="fas fa-memory"></i></div>
+            <div class="metric-label">RAM</div>
+            <div class="donut-container">
+              <svg class="donut-svg" viewBox="0 0 100 100">
+                <circle class="donut-bg" cx="50" cy="50" r="38"/>
+                <circle class="donut-fg" id="donutRam" cx="50" cy="50" r="38" data-color="amber"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct" id="ramPct">—</div>
+                <div class="donut-sub">kullanım</div>
+              </div>
+            </div>
+            <div class="metric-detail" id="ramDetail">—</div>
+          </div>
+
+          <div class="sys-card metric-card">
+            <div class="metric-icon"><i class="fas fa-hdd"></i></div>
+            <div class="metric-label">Disk (/)</div>
+            <div class="donut-container">
+              <svg class="donut-svg" viewBox="0 0 100 100">
+                <circle class="donut-bg" cx="50" cy="50" r="38"/>
+                <circle class="donut-fg" id="donutDisk" cx="50" cy="50" r="38" data-color="coral"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct" id="diskPct">—</div>
+                <div class="donut-sub">dolu</div>
+              </div>
+            </div>
+            <div class="metric-detail" id="diskDetail">—</div>
+          </div>
+        </div><!-- /sys-metrics -->
+
+        <!-- Alt kartlar: Sunucu Bilgisi + Disk Bölümleri -->
+        <div class="sys-bottom" id="sysBottom" style="display:none">
+          <div class="sys-card info-card">
+            <div class="info-card-title"><i class="fas fa-server"></i> Sunucu Bilgisi</div>
+            <div class="info-rows" id="sysInfoRows"></div>
+          </div>
+          <div class="sys-card mounts-card">
+            <div class="info-card-title"><i class="fas fa-folder-open"></i> Disk Bölümleri</div>
+            <div id="sysMounts"></div>
+          </div>
+        </div>
+
+      </div><!-- /sysBody -->
+    </div><!-- /systemTab -->
 
   </main>
 </div>
@@ -771,6 +1064,275 @@ async function doLogout() {
   try { await fetch(apiUrl('/auth/logout'), { method: 'POST' }); } catch (_) {}
   // Sayfayı yenile — login ekranı gösterilecek
   window.location.reload();
+}
+
+// ══════════════════════════════════════════════════════
+// PANEL DRAG & RESIZE ALTYAPISI
+// ══════════════════════════════════════════════════════
+function centerPanel(panel, defaultW, defaultH) {
+  const w = Math.min(defaultW, window.innerWidth  * 0.94);
+  const h = Math.min(defaultH, window.innerHeight * 0.88);
+  panel.style.width  = w + 'px';
+  panel.style.height = h + 'px';
+  panel.style.left   = Math.max(0, (window.innerWidth  - w) / 2) + 'px';
+  panel.style.top    = Math.max(0, (window.innerHeight - h) / 2) + 'px';
+  panel.style.transform = 'none';
+}
+
+function makeDraggable(panel, handle) {
+  handle.addEventListener('mousedown', e => {
+    // Kapatma butonuna tıklandıysa sürükleme
+    if (e.target.closest('button')) return;
+    e.preventDefault();
+    const startX   = e.clientX;
+    const startY   = e.clientY;
+    const startLeft = parseInt(panel.style.left) || panel.getBoundingClientRect().left;
+    const startTop  = parseInt(panel.style.top)  || panel.getBoundingClientRect().top;
+    panel.style.transition = 'none';
+
+    function onMove(e) {
+      const newLeft = startLeft + e.clientX - startX;
+      const newTop  = startTop  + e.clientY - startY;
+      // Ekran dışına çıkmasını engelle
+      panel.style.left = Math.max(0, Math.min(window.innerWidth  - 80, newLeft)) + 'px';
+      panel.style.top  = Math.max(0, Math.min(window.innerHeight - 40, newTop))  + 'px';
+    }
+    function onUp() {
+      panel.style.transition = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// DİFF — MAKİNE KARŞILAŞTIRMA
+// ══════════════════════════════════════════════════════
+function openDiff() {
+  const opts = S.machines.map(m =>
+    `<option value="${m.id}">${esc(m.name)} (${esc(m.host)})</option>`
+  ).join('');
+  document.getElementById('diffSelA').innerHTML = opts;
+  document.getElementById('diffSelB').innerHTML = opts;
+  if (S.machines.length > 1) document.getElementById('diffSelB').selectedIndex = 1;
+  document.getElementById('diffStats').style.display = 'none';
+  document.getElementById('diffBody').innerHTML = `
+    <div class="search-empty-state"><i class="fas fa-code-branch"></i><p>İki makine seçip Karşılaştır'a tıklayın</p></div>`;
+
+  const overlay = document.getElementById('diffOverlay');
+  overlay.classList.remove('hidden');
+
+  const panel  = document.getElementById('diffPanel');
+  const handle = document.getElementById('diffDragHandle');
+  centerPanel(panel, 980, 620);
+  makeDraggable(panel, handle);
+}
+
+function closeDiff() {
+  document.getElementById('diffOverlay').classList.add('hidden');
+}
+
+async function runDiff() {
+  const idA = document.getElementById('diffSelA').value;
+  const idB = document.getElementById('diffSelB').value;
+  if (idA === idB) { toast('Farklı iki makine seçin', 'warning'); return; }
+
+  const nameA = document.getElementById('diffSelA').options[document.getElementById('diffSelA').selectedIndex].text;
+  const nameB = document.getElementById('diffSelB').options[document.getElementById('diffSelB').selectedIndex].text;
+
+  document.getElementById('diffStats').style.display = 'none';
+  document.getElementById('diffBody').innerHTML = `<div class="diff-loading"><span class="spinner dark"></span> Karşılaştırılıyor, lütfen bekleyin...</div>`;
+
+  try {
+    const res  = await fetch(apiUrl(`/api/diff?machineA=${idA}&machineB=${idB}`));
+    const data = await res.json();
+    if (!data.success) { toast(data.error || 'Hata', 'error'); return; }
+
+    const { onlyInA, onlyInB, different, same } = data;
+    const mA = data.machineA, mB = data.machineB;
+
+    // İstatistik çubuğu
+    document.getElementById('diffStats').style.display = 'flex';
+    document.getElementById('diffStats').innerHTML = `
+      <div class="diff-stat"><span class="diff-badge only-a">${onlyInA.length}</span> Sadece ${esc(mA.name)}'de</div>
+      <div class="diff-stat"><span class="diff-badge only-b">${onlyInB.length}</span> Sadece ${esc(mB.name)}'de</div>
+      <div class="diff-stat"><span class="diff-badge diff">${different.length}</span> Farklı değer</div>
+      <div class="diff-stat"><span class="diff-badge same">${same.length}</span> Aynı</div>`;
+
+    // İçerik
+    let html = '';
+
+    if (onlyInA.length || onlyInB.length || different.length) {
+      // Farklı değerler — en önemli, üstte
+      if (different.length) {
+        html += diffSection('Farklı Değerler', 'diff', different.length,
+          `<table class="diff-table">
+            <thead><tr><th>Anahtar</th><th><i class="fas fa-circle" style="color:#dc2626;font-size:8px"></i> ${esc(mA.name)}</th><th><i class="fas fa-circle" style="color:#2563eb;font-size:8px"></i> ${esc(mB.name)}</th></tr></thead>
+            <tbody>${different.map(e => `
+              <tr class="diff-row-diff">
+                <td class="td-key">${esc(e.key)}</td>
+                <td><span class="val-a">${esc(e.valueA)}</span></td>
+                <td><span class="val-b">${esc(e.valueB)}</span></td>
+              </tr>`).join('')}
+            </tbody></table>`);
+      }
+
+      // Sadece A'da
+      if (onlyInA.length) {
+        html += diffSection(`Sadece ${esc(mA.name)}'de (${esc(mB.name)}'de eksik)`, 'only-a', onlyInA.length,
+          `<table class="diff-table">
+            <thead><tr><th>Anahtar</th><th>Değer</th></tr></thead>
+            <tbody>${onlyInA.map(e => `
+              <tr class="diff-row-a"><td class="td-key">${esc(e.key)}</td><td><span class="val-a">${esc(e.value)}</span></td></tr>`).join('')}
+            </tbody></table>`);
+      }
+
+      // Sadece B'de
+      if (onlyInB.length) {
+        html += diffSection(`Sadece ${esc(mB.name)}'de (${esc(mA.name)}'de eksik)`, 'only-b', onlyInB.length,
+          `<table class="diff-table">
+            <thead><tr><th>Anahtar</th><th>Değer</th></tr></thead>
+            <tbody>${onlyInB.map(e => `
+              <tr class="diff-row-b"><td class="td-key">${esc(e.key)}</td><td><span class="val-b">${esc(e.value)}</span></td></tr>`).join('')}
+            </tbody></table>`);
+      }
+    } else {
+      html += `<div class="diff-empty" style="padding:40px;font-size:15px"><i class="fas fa-check-circle" style="color:var(--success);font-size:36px;display:block;margin-bottom:12px"></i>İki makine tamamen aynı — hiç fark yok!</div>`;
+    }
+
+    // Aynı olanlar — gizli, toggle ile açılır
+    if (same.length) {
+      html += diffSection(`Aynı Değerler`, 'same', same.length,
+        `<table class="diff-table">
+          <thead><tr><th>Anahtar</th><th>Değer</th></tr></thead>
+          <tbody>${same.map(e => `
+            <tr><td class="td-key">${esc(e.key)}</td><td><span class="val-chip">${esc(e.value)}</span></td></tr>`).join('')}
+          </tbody></table>`, true);
+    }
+
+    document.getElementById('diffBody').innerHTML = html;
+  } catch (e) {
+    document.getElementById('diffBody').innerHTML = `<div class="diff-empty">Hata: ${esc(e.message)}</div>`;
+    toast('Karşılaştırma başarısız: ' + e.message, 'error');
+  }
+}
+
+function diffSection(title, badgeClass, count, tableHtml, collapsedByDefault = false) {
+  const id = 'ds_' + Math.random().toString(36).slice(2);
+  const hidden = collapsedByDefault ? 'style="display:none"' : '';
+  return `
+    <div class="diff-section">
+      <div class="diff-section-head" onclick="toggleDiffSection('${id}', this)">
+        <h4>${title}</h4>
+        <span class="diff-badge ${badgeClass}">${count}</span>
+        <i class="fas fa-chevron-${collapsedByDefault ? 'down' : 'up'}" style="color:var(--text-muted);font-size:11px"></i>
+      </div>
+      <div class="diff-table-wrap" id="${id}" ${hidden}>${tableHtml}</div>
+    </div>`;
+}
+
+function toggleDiffSection(id, headEl) {
+  const el = document.getElementById(id);
+  const icon = headEl.querySelector('i.fa-chevron-up, i.fa-chevron-down');
+  const hidden = el.style.display === 'none';
+  el.style.display = hidden ? '' : 'none';
+  if (icon) { icon.className = hidden ? 'fas fa-chevron-up' : 'fas fa-chevron-down'; }
+}
+
+// ══════════════════════════════════════════════════════
+// SEARCH — GLOBAL ARAMA
+// ══════════════════════════════════════════════════════
+function openSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchSummary').style.display = 'none';
+  document.getElementById('searchBody').innerHTML = `
+    <div class="search-empty-state"><i class="fas fa-search"></i><p>Aranacak kelimeyi girip Enter'a veya Ara'ya basın</p></div>`;
+
+  const overlay = document.getElementById('searchOverlay');
+  overlay.classList.remove('hidden');
+
+  const panel  = document.getElementById('searchPanel');
+  const handle = document.getElementById('searchDragHandle');
+  centerPanel(panel, 860, 580);
+  makeDraggable(panel, handle);
+
+  setTimeout(() => document.getElementById('searchInput').focus(), 80);
+}
+
+function closeSearch() {
+  document.getElementById('searchOverlay').classList.add('hidden');
+}
+
+async function runSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) { toast('Arama terimi girin', 'warning'); return; }
+
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Aranıyor...';
+  document.getElementById('searchSummary').style.display = 'none';
+  document.getElementById('searchBody').innerHTML = `<div class="diff-loading"><span class="spinner dark"></span> Tüm makineler taranıyor (${S.machines.length} makine)...</div>`;
+
+  try {
+    const res  = await fetch(apiUrl(`/api/search?query=${encodeURIComponent(q)}`));
+    const data = await res.json();
+    if (!data.success) { toast(data.error || 'Hata', 'error'); return; }
+
+    const results = data.results || [];
+    const totalMatches = results.reduce((s, r) => s + r.matches.length, 0);
+
+    // Özet
+    document.getElementById('searchSummary').style.display = '';
+    document.getElementById('searchSummary').innerHTML =
+      results.length === 0
+        ? `"<strong>${esc(q)}</strong>" için sonuç bulunamadı`
+        : `"<strong>${esc(q)}</strong>" → ${results.length} makinede, toplam <strong>${totalMatches}</strong> eşleşme`;
+
+    if (results.length === 0) {
+      document.getElementById('searchBody').innerHTML = `
+        <div class="search-no-results">
+          <i class="fas fa-search-minus"></i>
+          <p>"${esc(q)}" hiçbir makinede bulunamadı</p>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('searchBody').innerHTML = results.map(r => {
+      const m = r.machine;
+      return `
+        <div class="search-result-machine">
+          <div class="search-result-head">
+            <i class="fas fa-server" style="color:var(--accent);font-size:13px"></i>
+            <strong>${esc(m.name)}</strong>
+            <span class="env-badge ${m.environment || 'production'}">${m.environment || 'prod'}</span>
+            <span style="font-size:11px;color:var(--text-muted)">${esc(m.host)}</span>
+            <span class="search-match-count">${r.matches.length} eşleşme</span>
+          </div>
+          <table class="search-match-table">
+            <tbody>${r.matches.map(p => `
+              <tr>
+                <td class="td-key" style="width:40%">${highlight(p.key, q)}</td>
+                <td>${highlight(p.value, q)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('searchBody').innerHTML = `<div class="diff-empty">Hata: ${esc(e.message)}</div>`;
+    toast('Arama başarısız: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-search"></i> Ara';
+  }
+}
+
+function highlight(text, query) {
+  if (!query) return esc(text);
+  const re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  return esc(text).replace(re, '<mark class="search-highlight">$1</mark>');
 }
 
 // ══════════════════════════════════════════════════════
@@ -1260,13 +1822,135 @@ function deleteTemplate(idx) {
 // ══════════════════════════════════════════════════════
 function switchTab(tab) {
   S.activeTab = tab;
-  const isProps = tab === 'props';
+  const isProps  = tab === 'props';
+  const isLogs   = tab === 'logs';
+  const isSys    = tab === 'system';
 
-  document.getElementById('propsTab').style.display    = isProps ? '' : 'none';
-  document.getElementById('logTab').classList.toggle('visible', !isProps);
+  document.getElementById('propsTab').style.display = isProps ? '' : 'none';
+  document.getElementById('logTab').classList.toggle('visible', isLogs);
+  document.getElementById('systemTab').classList.toggle('visible', isSys);
   document.getElementById('tabBtnProps').classList.toggle('active', isProps);
-  document.getElementById('tabBtnLogs').classList.toggle('active', !isProps);
+  document.getElementById('tabBtnLogs').classList.toggle('active', isLogs);
+  document.getElementById('tabBtnSystem').classList.toggle('active', isSys);
   document.getElementById('propsActions').style.display = isProps ? 'flex' : 'none';
+
+  if (isSys && S.currentId) loadSystemInfo();
+}
+
+// ══════════════════════════════════════════════════════
+// SİSTEM BİLGİSİ
+// ══════════════════════════════════════════════════════
+const DONUT_CIRC = 2 * Math.PI * 38; // çevre = 238.76
+
+function setDonut(id, pct, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const p = Math.max(0, Math.min(100, pct));
+  const filled = (p / 100) * DONUT_CIRC;
+  el.setAttribute('stroke-dasharray', `${filled.toFixed(1)} ${DONUT_CIRC.toFixed(1)}`);
+  // Renk: yeşil <60, sarı 60-80, kırmızı >80
+  const stroke = p < 60 ? '#1D9E75' : p < 80 ? '#EF9F27' : '#E24B4A';
+  el.setAttribute('stroke', stroke);
+  // Yüzde rengi de güncelle
+  const pctEl = document.getElementById(id.replace('donut', '').toLowerCase() + 'Pct');
+  if (pctEl) {
+    pctEl.textContent = p + '%';
+    pctEl.style.color = stroke;
+  }
+}
+
+function mountBarColor(pct) {
+  return pct < 60 ? '#1D9E75' : pct < 80 ? '#EF9F27' : '#E24B4A';
+}
+
+async function loadSystemInfo() {
+  if (!S.currentId) return;
+  const loading = document.getElementById('sysLoading');
+  const errEl   = document.getElementById('sysError');
+  const metrics = document.getElementById('sysMetrics');
+  const bottom  = document.getElementById('sysBottom');
+
+  loading.style.display = 'flex';
+  errEl.style.display   = 'none';
+  metrics.style.display = 'none';
+  bottom.style.display  = 'none';
+
+  try {
+    const res  = await fetch(apiUrl(`/api/system/${S.currentId}`));
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (!data.success) {
+      errEl.textContent   = 'Hata: ' + (data.error || 'Bilinmeyen hata');
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // ── CPU ──
+    const cpuPct = data.cpuUsagePct >= 0 ? data.cpuUsagePct : 0;
+    setDonut('donutCpu', cpuPct, 'teal');
+    document.getElementById('cpuDetail').innerHTML =
+      `Load: ${data.load1} / ${data.load5} / ${data.load15}<br>${data.cpuCores} çekirdek`;
+
+    // ── RAM ──
+    const ramPct = data.ramUsagePct || 0;
+    setDonut('donutRam', ramPct, 'amber');
+    const ramUsedGb  = data.ramUsedMb  ? (data.ramUsedMb  / 1024).toFixed(1) : '?';
+    const ramTotalGb = data.ramTotalMb ? (data.ramTotalMb / 1024).toFixed(1) : '?';
+    const ramAvailGb = data.ramAvailMb ? (data.ramAvailMb / 1024).toFixed(1) : '?';
+    document.getElementById('ramDetail').innerHTML =
+      `${ramUsedGb} GB / ${ramTotalGb} GB<br>${ramAvailGb} GB boş`;
+
+    // ── Disk (/) ──
+    const diskPct = data.diskUsagePct || 0;
+    setDonut('donutDisk', diskPct, 'coral');
+    document.getElementById('diskDetail').innerHTML =
+      `${data.diskUsed || '?'} / ${data.diskSize || '?'}<br>${data.diskAvail || '?'} boş`;
+
+    metrics.style.display = 'grid';
+
+    // ── Sunucu bilgisi ──
+    const rows = [
+      { icon: 'fa-clock',        label: 'Uptime',           val: data.uptimeHuman || '—' },
+      { icon: 'fa-linux',        label: 'OS',               val: data.os || '—' },
+      { icon: 'fa-network-wired',label: 'IP',               val: (data.machine && data.machine.host) || '—' },
+      { icon: 'fa-user',         label: 'Kullanıcı',       val: (data.machine && data.machine.sudoUser) || '—' },
+      { icon: 'fa-coffee',       label: 'Java',             val: data.javaVersion || '—' },
+      { icon: 'fa-server',       label: 'Hostname',         val: data.hostname || '—' },
+      { icon: 'fa-play-circle',  label: 'Servis Başlangıç', val: `<span style="font-size:11px">${data.serviceStartTime || '—'}</span>` },
+    ];
+    document.getElementById('sysInfoRows').innerHTML = rows.map(r =>
+      `<div class="info-row-item">
+        <span class="info-row-key"><i class="fas ${r.icon}"></i> ${r.label}</span>
+        <span class="info-row-val">${r.val}</span>
+      </div>`
+    ).join('');
+
+    // ── Disk bölümleri ──
+    const mounts = data.diskMounts || [];
+    document.getElementById('sysMounts').innerHTML = mounts.length === 0
+      ? '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Bölüm bilgisi alınamadı</div>'
+      : mounts.map(m => {
+          const p = parseInt(m.pct) || 0;
+          return `<div class="mount-row">
+            <span class="mount-path">${m.mount}</span>
+            <div class="mount-bar-wrap"><div class="mount-bar" style="width:${p}%;background:${mountBarColor(p)}"></div></div>
+            <span class="mount-pct" style="color:${mountBarColor(p)}">${p}%</span>
+            <span class="mount-size">${m.used} / ${m.size}</span>
+          </div>`;
+        }).join('');
+
+    bottom.style.display = 'grid';
+
+    // Son güncelleme
+    document.getElementById('sysLastUpdate').textContent =
+      'Son güncelleme: ' + new Date().toLocaleTimeString('tr-TR');
+
+  } catch (e) {
+    loading.style.display = 'none';
+    errEl.textContent     = 'Bağlantı hatası: ' + e.message;
+    errEl.style.display   = 'block';
+  }
 }
 
 // ══════════════════════════════════════════════════════

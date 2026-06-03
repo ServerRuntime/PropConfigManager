@@ -1,19 +1,32 @@
 services:
   config-manager:
     build: .
-    image: flexcity-config-manager:1.0.0
+    image: flexcity-config-manager:latest
     container_name: flexcity-config-manager
     ports:
-      - "5050:5050"
+      - "5050:5050"   # Nginx üzerinden erişildiği için dışa açmak şart değil, isteğe bağlı
     volumes:
-      # machines.json dışarıdan yönetilir — değiştiriniz ve container'ı restart edin
       - ./machines.json:/app/machines.json:rw
     restart: unless-stopped
     environment:
       - TZ=Europe/Istanbul
+      - APP_UI_PASSWORD=1234
+      - LOGGING_LEVEL_COM_FLEXCITY=INFO
+      - APP_SSH_TIMEOUT=10000
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5050/api/machines || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5050/auth/check || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 25s
+
+  nginx:
+    image: nginx:alpine
+    container_name: flexcity-nginx
+    ports:
+      - "30050:80"    # http://hostname:30050 ile erişilir
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - config-manager
+    restart: unless-stopped

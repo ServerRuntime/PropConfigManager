@@ -1,7 +1,7 @@
-target/
 .git/
 .gitignore
 *.md
 *.bat
 *.sh
 src/test/
+# target/ kasıtlı olarak EXCLUDE edilmiyor — JAR buradan kopyalanıyor

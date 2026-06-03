@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * REST API — tüm istemci/sunucu iletişimi.
@@ -262,6 +264,141 @@ public class ApiController {
         } catch (Exception e) {
             return serverError(e.getMessage());
         }
+    }
+
+    // ─── Sistem bilgisi ────────────────────────────────────────────────────────
+
+    @GetMapping("/system/{machineId}")
+    public ResponseEntity<Map<String, Object>> getSystemInfo(
+            @PathVariable String machineId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String password) {
+
+        Optional<Machine> opt = machineService.findById(machineId);
+        if (opt.isEmpty()) return notFound("Makine bulunamadı: " + machineId);
+
+        Machine m      = opt.get();
+        String[] creds = resolveCreds(m, username, password);
+        if (creds == null) return badRequest("Kimlik bilgisi gerekli");
+
+        try {
+            Map<String, Object> info = sshService.getSystemInfo(
+                    m.getHost(), m.getPort(), creds[0], creds[1], m.getServiceName());
+            info.put("machine", safeView(m));
+            return ok(info);
+        } catch (JSchException e) {
+            return authOrSsh(e);
+        } catch (Exception e) {
+            return serverError(e.getMessage());
+        }
+    }
+
+    // ─── Diff (iki makine karşılaştırma) ──────────────────────────────────────
+
+    @GetMapping("/diff")
+    public ResponseEntity<Map<String, Object>> diff(
+            @RequestParam String machineA,
+            @RequestParam String machineB) {
+
+        Optional<Machine> optA = machineService.findById(machineA);
+        Optional<Machine> optB = machineService.findById(machineB);
+        if (optA.isEmpty()) return notFound("Makine bulunamadı: " + machineA);
+        if (optB.isEmpty()) return notFound("Makine bulunamadı: " + machineB);
+
+        Machine mA = optA.get();
+        Machine mB = optB.get();
+        String[] credsA = resolveCreds(mA, null, null);
+        String[] credsB = resolveCreds(mB, null, null);
+        if (credsA == null) return badRequest("Makine A kimlik bilgisi eksik");
+        if (credsB == null) return badRequest("Makine B kimlik bilgisi eksik");
+
+        try {
+            List<PropertyEntry> propsA = sshService.readProperties(
+                    mA.getHost(), mA.getPort(), credsA[0], credsA[1], mA.getSudoUser());
+            List<PropertyEntry> propsB = sshService.readProperties(
+                    mB.getHost(), mB.getPort(), credsB[0], credsB[1], mB.getSudoUser());
+
+            Map<String, String> mapA = propsA.stream()
+                    .collect(Collectors.toMap(PropertyEntry::getKey, PropertyEntry::getValue));
+            Map<String, String> mapB = propsB.stream()
+                    .collect(Collectors.toMap(PropertyEntry::getKey, PropertyEntry::getValue));
+
+            List<Map<String, String>> onlyInA  = new ArrayList<>();
+            List<Map<String, String>> onlyInB  = new ArrayList<>();
+            List<Map<String, String>> different = new ArrayList<>();
+            List<Map<String, String>> same      = new ArrayList<>();
+
+            for (Map.Entry<String, String> e : mapA.entrySet()) {
+                String key = e.getKey(), valA = e.getValue();
+                if (!mapB.containsKey(key)) {
+                    onlyInA.add(Map.of("key", key, "value", valA));
+                } else {
+                    String valB = mapB.get(key);
+                    if (valA.equals(valB)) same.add(Map.of("key", key, "value", valA));
+                    else different.add(Map.of("key", key, "valueA", valA, "valueB", valB));
+                }
+            }
+            mapB.forEach((key, valB) -> {
+                if (!mapA.containsKey(key)) onlyInB.add(Map.of("key", key, "value", valB));
+            });
+
+            Comparator<Map<String, String>> byKey = Comparator.comparing(m -> m.get("key"));
+            onlyInA.sort(byKey); onlyInB.sort(byKey);
+            different.sort(byKey); same.sort(byKey);
+
+            return ok(Map.of(
+                    "machineA",  safeView(mA),
+                    "machineB",  safeView(mB),
+                    "onlyInA",   onlyInA,
+                    "onlyInB",   onlyInB,
+                    "different", different,
+                    "same",      same
+            ));
+        } catch (Exception e) {
+            return serverError(e.getMessage());
+        }
+    }
+
+    // ─── Global arama ─────────────────────────────────────────────────────────
+
+    @GetMapping("/search")
+    public ResponseEntity<Map<String, Object>> search(@RequestParam String query) {
+        if (query == null || query.isBlank()) return badRequest("Arama sorgusu boş olamaz");
+
+        String q = query.trim().toLowerCase();
+        List<Machine> machines = machineService.getAll();
+        List<Map<String, Object>> results = Collections.synchronizedList(new ArrayList<>());
+
+        List<CompletableFuture<Void>> futures = machines.stream().map(m ->
+                CompletableFuture.runAsync(() -> {
+                    String[] creds = resolveCreds(m, null, null);
+                    if (creds == null) return;
+                    try {
+                        List<PropertyEntry> props = sshService.readProperties(
+                                m.getHost(), m.getPort(), creds[0], creds[1], m.getSudoUser());
+                        List<Map<String, String>> matches = props.stream()
+                                .filter(p -> p.getKey().toLowerCase().contains(q)
+                                        || p.getValue().toLowerCase().contains(q))
+                                .map(p -> Map.of("key", p.getKey(), "value", p.getValue()))
+                                .toList();
+                        if (!matches.isEmpty()) {
+                            results.add(Map.of("machine", safeView(m), "matches", matches));
+                        }
+                    } catch (Exception e) {
+                        log.warn("[Search] {} makinesinde hata: {}", m.getName(), e.getMessage());
+                    }
+                })
+        ).toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // Makine adına göre sırala
+        List<Map<String, Object>> sorted = results.stream()
+                .sorted(Comparator.comparing(r -> ((Map<?, ?>) r.get("machine"))
+                        .get("name").toString()))
+                .toList();
+
+        return ok(Map.of("query", query, "results", sorted));
     }
 
     // ─── Yardımcılar ───────────────────────────────────────────────────────────
