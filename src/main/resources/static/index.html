@@ -536,6 +536,52 @@
     .toast.info    .toast-icon { color: var(--accent); }
     .toast-msg { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; }
     .toast-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; }
+
+    /* ─── DASHBOARD ─── */
+    .dash-overlay { position: fixed; inset: 0; z-index: 1800; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
+    .dash-overlay.hidden { display: none; }
+    .dash-panel { width: min(1100px, 96vw); max-height: 90vh; background: var(--bg); border-radius: 18px; box-shadow: 0 32px 100px rgba(0,0,0,.5); display: flex; flex-direction: column; overflow: hidden; }
+    .dash-hdr { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); padding: 18px 24px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+    .dash-hdr-icon { width: 42px; height: 42px; border-radius: 12px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; flex-shrink: 0; }
+    .dash-hdr-title { font-size: 16px; font-weight: 700; color: #fff; }
+    .dash-hdr-sub { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 2px; }
+    .dash-hdr-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .dash-hdr-btn { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15); color: #fff; height: 34px; padding: 0 14px; border-radius: 9px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit; display: flex; align-items: center; gap: 7px; transition: background .15s; }
+    .dash-hdr-btn:hover { background: rgba(255,255,255,.2); }
+    .dash-hdr-close { background: rgba(255,255,255,.12); border: none; color: #fff; width: 34px; height: 34px; border-radius: 9px; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+    .dash-hdr-close:hover { background: rgba(255,255,255,.22); }
+    .dash-summary { display: flex; gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--card); }
+    .dash-sum-item { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-right: 1px solid var(--border); }
+    .dash-sum-item:last-child { border-right: none; }
+    .dash-sum-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dash-sum-dot.all     { background: var(--accent); }
+    .dash-sum-dot.up      { background: var(--success); }
+    .dash-sum-dot.down    { background: var(--danger); }
+    .dash-sum-dot.unknown { background: var(--text-muted); }
+    .dash-sum-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .dash-sum-val { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; margin-top: 2px; }
+    .dash-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .dash-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 18px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .12s; display: flex; flex-direction: column; gap: 10px; }
+    .dash-card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(37,99,235,.15); transform: translateY(-2px); }
+    .dash-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .dash-card-name { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .dash-card-host { font-size: 11px; color: var(--text-muted); font-family: 'Courier New', monospace; }
+    .dash-card-env { margin-top: 2px; }
+    .dash-status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .dash-status-badge.running { background: rgba(22,163,74,.12); color: #16a34a; border: 1px solid rgba(22,163,74,.25); }
+    .dash-status-badge.stopped { background: rgba(220,38,38,.12); color: #dc2626; border: 1px solid rgba(220,38,38,.25); }
+    .dash-status-badge.loading { background: var(--card2); color: var(--text-muted); border: 1px solid var(--border); }
+    .dash-status-badge.unknown { background: rgba(107,114,128,.12); color: var(--text-muted); border: 1px solid var(--border); }
+    .dash-status-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dash-status-dot.running { background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.2); animation: pulse-green 2s infinite; }
+    .dash-status-dot.stopped { background: #dc2626; }
+    .dash-status-dot.loading { background: var(--text-muted); animation: blink .8s infinite; }
+    .dash-status-dot.unknown { background: var(--text-muted); }
+    @keyframes pulse-green { 0%,100% { box-shadow: 0 0 0 2px rgba(22,163,74,.2); } 50% { box-shadow: 0 0 0 5px rgba(22,163,74,.08); } }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+    .dash-card-footer { display: flex; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); }
+    .dash-loading-msg { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text-muted); font-size: 13px; }
   </style>
 </head>
 <body>
@@ -670,6 +716,64 @@
   </div>
 </div>
 
+<!-- ══════════════ DASHBOARD PANELİ ══════════════ -->
+<div class="dash-overlay hidden" id="dashOverlay" onclick="if(event.target===this)closeDashboard()">
+  <div class="dash-panel">
+    <div class="dash-hdr">
+      <div class="dash-hdr-icon"><i class="fas fa-tachometer-alt"></i></div>
+      <div>
+        <div class="dash-hdr-title">Sunucu Dashboard</div>
+        <div class="dash-hdr-sub">Tüm makinelerin anlık servis durumu</div>
+      </div>
+      <div class="dash-hdr-actions">
+        <button class="dash-hdr-btn" onclick="loadDashboard()">
+          <i class="fas fa-sync-alt" id="dashRefreshIcon"></i> Yenile
+        </button>
+        <button class="dash-hdr-close" onclick="closeDashboard()" title="Kapat">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <div class="dash-summary">
+      <div class="dash-sum-item">
+        <div>
+          <div class="dash-sum-label">Toplam</div>
+          <div class="dash-sum-val" id="dashSumTotal">—</div>
+        </div>
+        <div class="dash-sum-dot all" style="margin-left:auto"></div>
+      </div>
+      <div class="dash-sum-item">
+        <div>
+          <div class="dash-sum-label">Çalışıyor</div>
+          <div class="dash-sum-val" id="dashSumUp" style="color:#16a34a">—</div>
+        </div>
+        <div class="dash-sum-dot up" style="margin-left:auto"></div>
+      </div>
+      <div class="dash-sum-item">
+        <div>
+          <div class="dash-sum-label">Durdu</div>
+          <div class="dash-sum-val" id="dashSumDown" style="color:#dc2626">—</div>
+        </div>
+        <div class="dash-sum-dot down" style="margin-left:auto"></div>
+      </div>
+      <div class="dash-sum-item">
+        <div>
+          <div class="dash-sum-label">Bilinmiyor</div>
+          <div class="dash-sum-val" id="dashSumUnknown">—</div>
+        </div>
+        <div class="dash-sum-dot unknown" style="margin-left:auto"></div>
+      </div>
+    </div>
+    <div class="dash-body">
+      <div class="dash-grid" id="dashGrid">
+        <div class="dash-loading-msg">
+          <span class="spinner dark"></span> Yükleniyor…
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ DİFF PANELİ ══════════════ -->
 <div class="diff-overlay hidden" id="diffOverlay" onclick="if(event.target===this)closeDiff()">
   <div class="diff-panel" id="diffPanel">
@@ -740,6 +844,12 @@
   <div class="hdr-logo"><i class="fas fa-sliders-h"></i></div>
   <div><div class="hdr-title">FlexCity Config Manager</div><sub class="hdr-sub">Remote Properties Yönetim Sistemi</sub></div>
   <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <button onclick="openDashboard()" title="Sunucu Dashboard"
+      style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
+             height:34px;padding:0 14px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;
+             display:flex;align-items:center;gap:7px;transition:background .15s;">
+      <i class="fas fa-tachometer-alt"></i> Dashboard
+    </button>
     <button onclick="openSearch()" title="Global Arama"
       style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;
              height:34px;padding:0 14px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;
@@ -3031,7 +3141,6 @@ async function loadSystemInfo() {
       `${ramUsedGb} GB / ${ramTotalGb} GB<br>${ramAvailGb} GB boş`;
 
     // ── Disk (/) ──
-    const diskPct = data.diskUsagePct || 0;
     setDonut('donutDisk', diskPct, 'coral');
     document.getElementById('diskDetail').innerHTML =
       `${data.diskUsed || '?'} / ${data.diskSize || '?'}<br>${data.diskAvail || '?'} boş`;
@@ -3221,9 +3330,111 @@ function appendLogLine(text, forceClass) {
   }
 }
 
+
+// ══════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════
+function openDashboard() {
+  document.getElementById('dashOverlay').classList.remove('hidden');
+  loadDashboard();
+}
+
+function closeDashboard() {
+  document.getElementById('dashOverlay').classList.add('hidden');
+}
+
+async function loadDashboard() {
+  const grid = document.getElementById('dashGrid');
+  const icon = document.getElementById('dashRefreshIcon');
+
+  ['dashSumTotal','dashSumUp','dashSumDown','dashSumUnknown'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+
+  grid.innerHTML = S.machines.map(m => `
+    <div class="dash-card" id="dcard-${m.id}" onclick="dashGoTo('${m.id}')">
+      <div class="dash-card-top">
+        <div>
+          <div class="dash-card-name">${m.name}</div>
+          <div class="dash-card-host">${m.host}</div>
+        </div>
+        <span class="dash-status-badge loading" id="dstat-badge-${m.id}">
+          <span class="dash-status-dot loading" id="dstat-dot-${m.id}"></span>
+          <span id="dstat-text-${m.id}">Kontrol…</span>
+        </span>
+      </div>
+      <div class="dash-card-env">
+        <span class="env-badge">${m.environment || 'unknown'}</span>
+      </div>
+      <div class="dash-card-footer">
+        <i class="fas fa-server" style="font-size:10px"></i>
+        <span>${m.description || m.serviceName || ''}</span>
+      </div>
+    </div>
+  `).join('');
+
+  icon.classList.add('fa-spin');
+
+  const results = await Promise.allSettled(
+    S.machines.map(m => fetchDashStatus(m))
+  );
+
+  icon.classList.remove('fa-spin');
+
+  let up = 0, down = 0, unknown = 0;
+  results.forEach(r => {
+    const s = r.status === 'fulfilled' ? r.value : 'unknown';
+    if (s === 'active' || s === 'running') up++;
+    else if (s === 'stopped' || s === 'failed' || s === 'inactive') down++;
+    else unknown++;
+  });
+
+  document.getElementById('dashSumTotal').textContent   = S.machines.length;
+  document.getElementById('dashSumUp').textContent      = up;
+  document.getElementById('dashSumDown').textContent    = down;
+  document.getElementById('dashSumUnknown').textContent = unknown;
+}
+
+async function fetchDashStatus(m) {
+  const badgeEl = document.getElementById(`dstat-badge-${m.id}`);
+  const dotEl   = document.getElementById(`dstat-dot-${m.id}`);
+  const txtEl   = document.getElementById(`dstat-text-${m.id}`);
+
+  try {
+    const params = new URLSearchParams(resolveCredsFor(m.id));
+    const res    = await fetch(apiUrl(`/api/service/${m.id}/status?${params}`));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data   = await res.json();
+    const status = data.success ? (data.status || 'unknown') : 'unknown';
+
+    const labelMap = { active: 'Çalışıyor', running: 'Çalışıyor', stopped: 'Durdu', failed: 'Başarısız', inactive: 'Pasif' };
+    const label    = labelMap[status] || 'Bilinmiyor';
+    const cls      = (status === 'active' || status === 'running') ? 'running'
+                   : (status === 'stopped' || status === 'failed' || status === 'inactive') ? 'stopped'
+                   : 'unknown';
+
+    if (badgeEl) badgeEl.className = `dash-status-badge ${cls}`;
+    if (dotEl)   dotEl.className   = `dash-status-dot ${cls}`;
+    if (txtEl)   txtEl.textContent  = label;
+
+    return status;
+  } catch (_) {
+    if (badgeEl) badgeEl.className = 'dash-status-badge unknown';
+    if (dotEl)   dotEl.className   = 'dash-status-dot unknown';
+    if (txtEl)   txtEl.textContent  = 'Ulaşılamadı';
+    return 'unknown';
+  }
+}
+
+function dashGoTo(machineId) {
+  closeDashboard();
+  const item = document.querySelector(`.machine-item[data-id="${machineId}"]`);
+  if (item) item.click();
+}
+
 // Klavye kısayolları
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') ['editOverlay','deleteOverlay','credOverlay','templateOverlay'].forEach(id => closeM(id));
+  if (e.key === 'Escape') { ['editOverlay','deleteOverlay','credOverlay','templateOverlay'].forEach(id => closeM(id)); if (!document.getElementById('dashOverlay').classList.contains('hidden')) closeDashboard(); }
   if (e.key === 'Enter' && !document.getElementById('loginOverlay').classList.contains('hidden')) doLogin();
   if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); if(S.currentId) openAdd(); }
   if ((e.ctrlKey||e.metaKey) && e.key==='r') { e.preventDefault(); refreshProps(); }
