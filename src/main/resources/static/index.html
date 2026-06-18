@@ -515,6 +515,40 @@
     .mount-pct { font-size: 12px; font-weight: 700; width: 36px; text-align: right; }
     .mount-size { font-size: 11px; color: var(--text-muted); width: 100px; text-align: right; }
 
+    /* ─── DISK TEMİZLEME ─── */
+    .disk-area { display: none; flex-direction: column; overflow: hidden; flex: 1; }
+    .disk-area.visible { display: flex; }
+    .disk-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--card2); flex-shrink: 0; flex-wrap: wrap; }
+    .disk-summary { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-muted); margin-right: auto; }
+    .disk-summary strong { color: var(--text); }
+    .disk-summary .disk-warn { color: var(--danger); font-weight: 700; }
+    .disk-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .disk-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    .disk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .disk-table thead tr { background: var(--card2); border-bottom: 1.5px solid var(--border); }
+    .disk-table thead th { padding: 9px 14px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); }
+    .disk-table thead th:first-child { width: 32px; }
+    .disk-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    .disk-table tbody tr:last-child { border-bottom: none; }
+    .disk-table tbody tr:hover { background: var(--card2); }
+    .disk-table tbody tr.active-log { background: rgba(37,99,235,.04); }
+    .disk-table td { padding: 10px 14px; vertical-align: middle; }
+    .disk-fname { font-family: 'Courier New', monospace; font-size: 12px; color: var(--key-color); word-break: break-all; }
+    .disk-fpath { font-size: 10px; color: var(--text-muted); margin-top: 2px; font-family: 'Courier New', monospace; word-break: break-all; }
+    .disk-size { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .disk-size.big { color: var(--danger); }
+    .disk-size.med { color: var(--warn); }
+    .disk-date { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .disk-badge-active { display: inline-flex; align-items: center; gap: 4px; background: rgba(37,99,235,.1); color: var(--accent); border: 1px solid rgba(37,99,235,.2); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+    .disk-badge-clog { display: inline-flex; align-items: center; gap: 4px; background: rgba(220,38,38,.1); color: var(--danger); border: 1px solid rgba(220,38,38,.2); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+    .disk-del-btn { height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--card2); color: var(--text-muted); font-size: 11px; cursor: pointer; font-family: inherit; transition: all .13s; white-space: nowrap; }
+    .disk-del-btn:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
+    .disk-del-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .disk-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 60px 20px; color: var(--text-muted); font-size: 13px; }
+    .disk-empty i { font-size: 32px; opacity: .3; }
+    .disk-loading { display: flex; align-items: center; gap: 10px; justify-content: center; padding: 40px; color: var(--text-muted); font-size: 13px; }
+    .disk-error { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--danger); margin: 16px 0; }
+
     /* ─── SPINNER ─── */
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
     .spinner.dark { border-color: rgba(0,0,0,.15); border-top-color: var(--accent); }
@@ -945,6 +979,9 @@
       <button class="tab-btn" id="tabBtnAnalyze" onclick="switchTab('analyze')">
         <i class="fas fa-stethoscope"></i> Analiz
       </button>
+      <button class="tab-btn" id="tabBtnDisk" onclick="switchTab('disk')">
+        <i class="fas fa-broom"></i> Disk Temizle
+      </button>
     </div>
 
     <!-- Properties Tab -->
@@ -1230,6 +1267,34 @@
 
       </div>
     </div><!-- /analyzeTab -->
+
+    <!-- ══════ DISK TEMİZLEME SEKMESİ ══════ -->
+    <div class="disk-area" id="diskTab">
+      <div class="disk-toolbar">
+        <div class="disk-summary">
+          <span>Toplam: <strong id="diskTotalSize">—</strong></span>
+          <span id="diskFileCount" style="color:var(--text-muted)"></span>
+          <span id="diskWarnMsg" class="disk-warn" style="display:none">
+            <i class="fas fa-exclamation-triangle"></i> Yüksek boyut tespit edildi!
+          </span>
+        </div>
+        <button class="btn btn-sm btn-outline" onclick="loadDiskFiles()" id="diskRefreshBtn">
+          <i class="fas fa-sync-alt"></i> Yenile
+        </button>
+        <button class="btn btn-sm btn-danger" id="diskDeleteSelectedBtn"
+                onclick="deleteSelectedLogs()" style="display:none">
+          <i class="fas fa-trash"></i> Seçilenleri Sil
+        </button>
+      </div>
+      <div class="disk-body">
+        <div id="diskContent">
+          <div class="disk-empty">
+            <i class="fas fa-broom"></i>
+            <p>Log dosyalarını listelemek için Yenile'ye tıklayın</p>
+          </div>
+        </div>
+      </div>
+    </div><!-- /diskTab -->
 
   </main>
 </div>
@@ -2441,6 +2506,18 @@ async function loadMachine(id) {
   const tabAnalyze = document.getElementById('tabBtnAnalyze');
   tabAnalyze.style.display = (m.hasJstack || m.jstackPath) ? '' : 'none';
 
+  // Disk Temizle sekmesi tüm makinelerde görünür
+  const tabDisk = document.getElementById('tabBtnDisk');
+  tabDisk.disabled = false;
+  tabDisk.title    = '';
+  // İçeriği sıfırla (farklı makineye geçişte)
+  document.getElementById('diskContent').innerHTML =
+    '<div class="disk-empty"><i class="fas fa-broom"></i><p>Log dosyalarını listelemek için Yenile\'ye tıklayın</p></div>';
+  document.getElementById('diskTotalSize').textContent = '—';
+  document.getElementById('diskFileCount').textContent = '';
+  document.getElementById('diskWarnMsg').style.display = 'none';
+  document.getElementById('diskDeleteSelectedBtn').style.display = 'none';
+
   // Props sekmesine geç
   switchTab('props');
 
@@ -3060,19 +3137,24 @@ function switchTab(tab) {
   const isLogs    = tab === 'logs';
   const isSys     = tab === 'system';
   const isAnalyze = tab === 'analyze';
+  const isDisk    = tab === 'disk';
 
   document.getElementById('propsTab').style.display = isProps ? '' : 'none';
   document.getElementById('logTab').classList.toggle('visible', isLogs);
   document.getElementById('systemTab').classList.toggle('visible', isSys);
   document.getElementById('analyzeTab').classList.toggle('visible', isAnalyze);
+  document.getElementById('diskTab').classList.toggle('visible', isDisk);
   document.getElementById('tabBtnProps').classList.toggle('active', isProps);
   document.getElementById('tabBtnLogs').classList.toggle('active', isLogs);
   document.getElementById('tabBtnSystem').classList.toggle('active', isSys);
   document.getElementById('tabBtnAnalyze').classList.toggle('active', isAnalyze);
+  document.getElementById('tabBtnDisk').classList.toggle('active', isDisk);
   document.getElementById('propsActions').style.display = isProps ? 'flex' : 'none';
 
   if (isSys     && S.currentId) loadSystemInfo();
   if (isAnalyze && S.currentId) initAnalyze();
+  console.log('[Tab] disk geçişi, isDisk:', isDisk, 'currentId:', S.currentId);
+  if (isDisk    && S.currentId) loadDiskFiles();
   if (!isAnalyze) stopAnalyzeTimer();
 }
 
@@ -3141,6 +3223,7 @@ async function loadSystemInfo() {
       `${ramUsedGb} GB / ${ramTotalGb} GB<br>${ramAvailGb} GB boş`;
 
     // ── Disk (/) ──
+    const diskPct = data.diskUsagePct >= 0 ? data.diskUsagePct : 0;
     setDonut('donutDisk', diskPct, 'coral');
     document.getElementById('diskDetail').innerHTML =
       `${data.diskUsed || '?'} / ${data.diskSize || '?'}<br>${data.diskAvail || '?'} boş`;
@@ -3346,11 +3429,9 @@ function closeDashboard() {
 async function loadDashboard() {
   const grid = document.getElementById('dashGrid');
   const icon = document.getElementById('dashRefreshIcon');
-
   ['dashSumTotal','dashSumUp','dashSumDown','dashSumUnknown'].forEach(id => {
     document.getElementById(id).textContent = '—';
   });
-
   grid.innerHTML = S.machines.map(m => `
     <div class="dash-card" id="dcard-${m.id}" onclick="dashGoTo('${m.id}')">
       <div class="dash-card-top">
@@ -3372,15 +3453,9 @@ async function loadDashboard() {
       </div>
     </div>
   `).join('');
-
   icon.classList.add('fa-spin');
-
-  const results = await Promise.allSettled(
-    S.machines.map(m => fetchDashStatus(m))
-  );
-
+  const results = await Promise.allSettled(S.machines.map(m => fetchDashStatus(m)));
   icon.classList.remove('fa-spin');
-
   let up = 0, down = 0, unknown = 0;
   results.forEach(r => {
     const s = r.status === 'fulfilled' ? r.value : 'unknown';
@@ -3388,7 +3463,6 @@ async function loadDashboard() {
     else if (s === 'stopped' || s === 'failed' || s === 'inactive') down++;
     else unknown++;
   });
-
   document.getElementById('dashSumTotal').textContent   = S.machines.length;
   document.getElementById('dashSumUp').textContent      = up;
   document.getElementById('dashSumDown').textContent    = down;
@@ -3399,24 +3473,19 @@ async function fetchDashStatus(m) {
   const badgeEl = document.getElementById(`dstat-badge-${m.id}`);
   const dotEl   = document.getElementById(`dstat-dot-${m.id}`);
   const txtEl   = document.getElementById(`dstat-text-${m.id}`);
-
   try {
     const params = new URLSearchParams(resolveCredsFor(m.id));
     const res    = await fetch(apiUrl(`/api/service/${m.id}/status?${params}`));
-    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data   = await res.json();
-    const status = data.success ? (data.status || 'unknown') : 'unknown';
-
+    const status = data.status || 'unknown';
     const labelMap = { active: 'Çalışıyor', running: 'Çalışıyor', stopped: 'Durdu', failed: 'Başarısız', inactive: 'Pasif' };
     const label    = labelMap[status] || 'Bilinmiyor';
     const cls      = (status === 'active' || status === 'running') ? 'running'
                    : (status === 'stopped' || status === 'failed' || status === 'inactive') ? 'stopped'
                    : 'unknown';
-
     if (badgeEl) badgeEl.className = `dash-status-badge ${cls}`;
     if (dotEl)   dotEl.className   = `dash-status-dot ${cls}`;
     if (txtEl)   txtEl.textContent  = label;
-
     return status;
   } catch (_) {
     if (badgeEl) badgeEl.className = 'dash-status-badge unknown';
@@ -3430,6 +3499,155 @@ function dashGoTo(machineId) {
   closeDashboard();
   const item = document.querySelector(`.machine-item[data-id="${machineId}"]`);
   if (item) item.click();
+}
+
+// ══════════════════════════════════════════════════════
+// DİSK TEMİZLEME
+// ══════════════════════════════════════════════════════
+async function loadDiskFiles() {
+  console.log('[Disk] loadDiskFiles çağrıldı, currentId:', S.currentId);
+  if (!S.currentId) { console.warn('[Disk] currentId yok, çıkılıyor'); return; }
+  const content = document.getElementById('diskContent');
+  const btn     = document.getElementById('diskRefreshBtn');
+  content.innerHTML = '<div class="disk-loading"><span class="spinner dark"></span> Log dosyaları taranıyor…</div>';
+  document.getElementById('diskDeleteSelectedBtn').style.display = 'none';
+  document.getElementById('diskTotalSize').textContent = '—';
+  document.getElementById('diskFileCount').textContent = '';
+  document.getElementById('diskWarnMsg').style.display = 'none';
+  btn.disabled = true;
+  try {
+    const params = new URLSearchParams(resolveCredsFor(S.currentId));
+    const url = apiUrl(`/api/disk/${S.currentId}/logs?${params}`);
+    console.log('[Disk] İstek URL:', url);
+    const res    = await fetch(url);
+    console.log('[Disk] HTTP durum:', res.status);
+    const data   = await res.json();
+    console.log('[Disk] Yanıt:', data);
+    if (!data.success) {
+      content.innerHTML = `<div class="disk-error"><i class="fas fa-exclamation-circle"></i> ${data.error || 'Hata'}</div>`;
+      return;
+    }
+    const files = data.files || [];
+    document.getElementById('diskTotalSize').textContent = data.totalHuman || '0 B';
+    document.getElementById('diskFileCount').textContent = `${files.length} dosya`;
+    const totalGB = (data.totalSize || 0) / 1073741824;
+    if (totalGB >= 5) document.getElementById('diskWarnMsg').style.display = '';
+    if (files.length === 0) {
+      content.innerHTML = '<div class="disk-empty"><i class="fas fa-check-circle" style="color:var(--success)"></i><p>Temizlenecek log dosyası bulunamadı</p></div>';
+      return;
+    }
+    files.sort((a, b) => Number(b.size) - Number(a.size));
+    const isCLog = p => p.includes('/c:/') || p.includes('c:\\');
+    const sizeClass = bytes => {
+      const gb = bytes / 1073741824;
+      if (gb >= 1)   return 'big';
+      if (gb >= 0.1) return 'med';
+      return '';
+    };
+    content.innerHTML = `
+      <div class="disk-table-wrap">
+        <table class="disk-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="diskSelectAll" onchange="toggleSelectAll(this)" title="Tümünü seç (aktif hariç)"></th>
+              <th>Dosya</th>
+              <th>Boyut</th>
+              <th>Son Değişiklik</th>
+              <th>Durum</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${files.map(f => {
+              const isActive = f.active === 'true';
+              const isBad    = isCLog(f.path);
+              return `
+              <tr class="${isActive ? 'active-log' : ''}">
+                <td><input type="checkbox" class="disk-chk" data-path="${escHtml(f.path)}"
+                           ${isActive ? 'disabled title="Aktif log silinemez"' : ''}></td>
+                <td>
+                  <div class="disk-fname">${escHtml(f.name)}</div>
+                  <div class="disk-fpath">${escHtml(f.path)}</div>
+                </td>
+                <td><span class="disk-size ${sizeClass(Number(f.size))}">${escHtml(f.sizeHuman)}</span></td>
+                <td><span class="disk-date">${escHtml(f.modified)}</span></td>
+                <td>
+                  ${isActive ? '<span class="disk-badge-active"><i class="fas fa-circle"></i> Aktif</span>' : ''}
+                  ${isBad    ? '<span class="disk-badge-clog"><i class="fas fa-exclamation-triangle"></i> Hatalı Yol</span>' : ''}
+                </td>
+                <td>
+                  <button class="disk-del-btn" ${isActive ? 'disabled' : ''}
+                          onclick="deleteSingleLog(${JSON.stringify(f.path)})">
+                    <i class="fas fa-trash-alt"></i> Sil
+                  </button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    document.querySelectorAll('.disk-chk').forEach(chk => {
+      chk.addEventListener('change', updateDiskDeleteBtn);
+    });
+  } catch (e) {
+    content.innerHTML = `<div class="disk-error"><i class="fas fa-exclamation-circle"></i> Bağlantı hatası: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function toggleSelectAll(master) {
+  document.querySelectorAll('.disk-chk:not(:disabled)').forEach(c => c.checked = master.checked);
+  updateDiskDeleteBtn();
+}
+
+function updateDiskDeleteBtn() {
+  const anyChecked = [...document.querySelectorAll('.disk-chk:not(:disabled)')].some(c => c.checked);
+  document.getElementById('diskDeleteSelectedBtn').style.display = anyChecked ? '' : 'none';
+  const master = document.getElementById('diskSelectAll');
+  if (master) {
+    const all = [...document.querySelectorAll('.disk-chk:not(:disabled)')];
+    master.indeterminate = all.some(c => c.checked) && !all.every(c => c.checked);
+    master.checked = all.length > 0 && all.every(c => c.checked);
+  }
+}
+
+async function deleteSingleLog(path) {
+  if (!confirm(`Bu log dosyası silinecek:\n\n${path}\n\nDevam edilsin mi?`)) return;
+  await _doDeleteLog([path]);
+}
+
+async function deleteSelectedLogs() {
+  const paths = [...document.querySelectorAll('.disk-chk:checked')].map(c => c.dataset.path);
+  if (paths.length === 0) return;
+  if (!confirm(`${paths.length} dosya silinecek. Bu işlem geri alınamaz.\n\nDevam edilsin mi?`)) return;
+  await _doDeleteLog(paths);
+}
+
+async function _doDeleteLog(paths) {
+  const creds = resolveCredsFor(S.currentId);
+  let freed = 0, failed = 0;
+  for (const path of paths) {
+    try {
+      const res  = await fetch(apiUrl(`/api/disk/${S.currentId}/log`), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...creds, path })
+      });
+      const data = await res.json();
+      if (data.success) freed++;
+      else { failed++; toast(`Silinemedi: ${data.error}`, 'error'); }
+    } catch (e) {
+      failed++;
+      toast(`Hata: ${e.message}`, 'error');
+    }
+  }
+  if (freed > 0) toast(`${freed} dosya silindi`, 'success');
+  if (failed === 0) loadDiskFiles();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // Klavye kısayolları

@@ -803,4 +803,108 @@ public class SshService {
     private String shellQuote(String s) {
         return "'" + s.replace("'", "'\\''") + "'";
     }
+
+    // ─── Disk Temizleme ────────────────────────────────────────────────────────
+
+    public List<Map<String, String>> listLogFiles(String host, int port,
+                                                   String username, String password,
+                                                   String activeLogFile, String sudoUser) throws Exception {
+        Session session = openSession(host, port, username, password);
+        try {
+            String logDir = activeLogFile.contains("/")
+                    ? activeLogFile.substring(0, activeLogFile.lastIndexOf('/'))
+                    : ".";
+            String appBase = logDir.endsWith("/logs")
+                    ? logDir.substring(0, logDir.length() - 5)
+                    : logDir;
+
+            // tailLog ile aynı pattern: sudo -u izinli mi test et, değilse root sudo
+            String sudo = "";
+            if (sudoUser != null && !sudoUser.isBlank()) {
+                String test = sudoExec(session, "sudo -S -u " + sudoUser + " echo ok", password);
+                if (isSudoPermissionError(test)) {
+                    log.warn("[SSH] listLogFiles: 'sudo -u {}' izinli değil, root sudo kullanılıyor", sudoUser);
+                    sudo = "sudo ";
+                } else {
+                    sudo = "sudo -u " + sudoUser + " ";
+                }
+            }
+
+            String cmd =
+                "{ " + sudo + "find " + shellQuote(logDir) +
+                " -maxdepth 1 -type f" +
+                " \\( -name '*.out' -o -name '*.out.*' -o -name '*.log' -o -name '*.log.*' -o -name '*.gz' \\)" +
+                " -exec stat -c '%s\t%y\t%n' {} \\; 2>/dev/null;" +
+                " " + sudo + "find " + shellQuote(appBase) +
+                " -maxdepth 6 -path '*/c:/*' -type f" +
+                " -exec stat -c '%s\t%y\t%n' {} \\; 2>/dev/null; }";
+
+            log.info("[Disk] Çalıştırılan komut: {}", cmd);
+            String raw = execCommand(session, cmd).trim();
+            log.info("[Disk] Ham çıktı ({} karakter): [{}]", raw.length(), raw.length() > 500 ? raw.substring(0, 500) + "..." : raw);
+            List<Map<String, String>> result = new ArrayList<>();
+            if (raw.isEmpty()) return result;
+
+            for (String line : raw.split("\n")) {
+                // stat -c '%s\t%y\t%n' çıktısı: "12345\t2024-01-15 10:30:00.000 +0300\t/path/file"
+                String[] parts = line.split("\t", 3);
+                if (parts.length < 3) continue;
+                long bytes = 0;
+                try { bytes = Long.parseLong(parts[0].trim()); } catch (Exception ignored) {}
+                // Tarihi kısalt: "2024-01-15 10:30:00.000000000 +0300" → "2024-01-15 10:30"
+                String modRaw = parts[1].trim();
+                String modified = modRaw.length() >= 16 ? modRaw.substring(0, 16) : modRaw;
+                String filePath2 = parts[2].trim();
+                String name = filePath2.contains("/") ? filePath2.substring(filePath2.lastIndexOf('/') + 1) : filePath2;
+                Map<String, String> f = new LinkedHashMap<>();
+                f.put("path",      filePath2);
+                f.put("name",      name);
+                f.put("size",      String.valueOf(bytes));
+                f.put("sizeHuman", humanSize(bytes));
+                f.put("modified",  modified);
+                f.put("active",    filePath2.equals(activeLogFile) ? "true" : "false");
+                result.add(f);
+            }
+            return result;
+        } finally {
+            session.disconnect();
+        }
+    }
+
+    public void deleteLogFile(String host, int port,
+                               String username, String password,
+                               String filePath, String activeLogFile,
+                               String sudoUser) throws Exception {
+        if (filePath == null || filePath.isBlank())
+            throw new IllegalArgumentException("Dosya yolu boş olamaz");
+        if (filePath.contains(".."))
+            throw new SecurityException("Geçersiz dosya yolu");
+        if (filePath.equals(activeLogFile))
+            throw new SecurityException("Aktif log dosyası silinemez");
+
+        String lower = filePath.toLowerCase();
+        boolean isLog = lower.endsWith(".gz") || lower.endsWith(".out")
+                || lower.contains(".out.") || lower.endsWith(".log")
+                || lower.contains(".log.");
+        if (!isLog)
+            throw new SecurityException("Yalnızca log dosyaları silinebilir");
+
+        Session session = openSession(host, port, username, password);
+        try {
+            String cmd = (sudoUser != null && !sudoUser.isBlank())
+                    ? "sudo -u " + sudoUser + " rm -f " + shellQuote(filePath)
+                    : "rm -f " + shellQuote(filePath);
+            execCommand(session, cmd);
+            log.info("[Disk] Silindi: {}", filePath);
+        } finally {
+            session.disconnect();
+        }
+    }
+
+    private String humanSize(long bytes) {
+        if (bytes < 1024)       return bytes + " B";
+        if (bytes < 1048576)    return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1073741824) return String.format("%.1f MB", bytes / 1048576.0);
+        return String.format("%.2f GB", bytes / 1073741824.0);
+    }
 }
