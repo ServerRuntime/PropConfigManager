@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,7 +32,8 @@ public class LogController {
     public SseEmitter streamLogs(
             @PathVariable String machineId,
             @RequestParam(required = false) String username,
-            @RequestParam(required = false) String password) {
+            @RequestParam(required = false) String password,
+            @RequestParam(required = false) String logFile) {
 
         SseEmitter emitter = new SseEmitter(0L);
 
@@ -44,7 +44,11 @@ public class LogController {
         String[] creds = resolveCreds(m, username, password);
         if (creds == null) { completeWithError(emitter, "Kimlik bilgisi gerekli"); return emitter; }
 
-        if (!m.hasLogFile()) { completeWithError(emitter, "Bu makine için logFile tanımlı değil"); return emitter; }
+        if (!m.hasLogFile() && (logFile == null || logFile.isBlank()))
+            { completeWithError(emitter, "Bu makine için logFile tanımlı değil"); return emitter; }
+
+        // Query param varsa onu kullan, yoksa machines.json'daki ilk dosya
+        final String selectedLog = (logFile != null && !logFile.isBlank()) ? logFile : m.getLogFile();
 
         AtomicBoolean stopped = new AtomicBoolean(false);
         emitter.onCompletion(() -> stopped.set(true));
@@ -55,9 +59,9 @@ public class LogController {
 
         executor.submit(() -> {
             try {
-                log.info("Log stream başladı: {} -> {}", m.getName(), m.getLogFile());
+                log.info("Log stream başladı: {} -> {}", m.getName(), selectedLog);
                 sshService.tailLog(m.getHost(), m.getPort(), user, pass,
-                        m.getSudoUser(), m.getLogFile(),
+                        m.getSudoUser(), selectedLog,
                         line -> {
                             try { emitter.send(SseEmitter.event().data(line)); }
                             catch (Exception ex) { stopped.set(true); }

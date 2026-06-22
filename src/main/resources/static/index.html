@@ -283,6 +283,9 @@
 
     /* ─── LOG AREA ─── */
     .log-area { display: none; flex-direction: column; overflow: hidden; flex: 1; }
+    .log-file-select { background: var(--card2); color: var(--text); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; font-size: 12px; cursor: pointer; max-width: 220px; }
+    .log-file-select:focus { outline: none; border-color: var(--accent); }
+
     .log-area.visible { display: flex; }
     .log-toolbar { padding: 8px 14px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
     .log-status { display: flex; align-items: center; gap: 7px; min-width: 0; }
@@ -1024,7 +1027,11 @@
           <span class="log-status-text" id="logStatusText">Bağlı değil</span>
         </div>
 
+        <select id="logFileSelect" class="log-file-select" onchange="onLogFileChange()" style="display:none" title="Log dosyası seç"></select>
+
         <div class="log-sep"></div>
+
+
 
         <div class="log-filter-btns">
           <button class="log-filter-btn active" data-filter="ALL"  onclick="setLogFilter('ALL')">Tümü</button>
@@ -2503,6 +2510,20 @@ async function loadMachine(id) {
   tabLogs.disabled = !m.logFile;
   tabLogs.title    = m.logFile ? '' : 'Bu makine için logFile tanımlı değil';
 
+  // Log dosyası seçici dropdown
+  const logSel = document.getElementById('logFileSelect');
+  const logFiles = m.logFiles || (m.logFile ? [m.logFile] : []);
+  if (logFiles.length > 1) {
+    logSel.innerHTML = logFiles.map(f => {
+      const name = f.split('/').pop();
+      return `<option value="${f}" title="${f}">${name}</option>`;
+    }).join('');
+    logSel.style.display = '';
+  } else {
+    logSel.innerHTML = '';
+    logSel.style.display = 'none';
+  }
+
   const tabAnalyze = document.getElementById('tabBtnAnalyze');
   tabAnalyze.style.display = (m.hasJstack || m.jstackPath) ? '' : 'none';
 
@@ -3153,7 +3174,6 @@ function switchTab(tab) {
 
   if (isSys     && S.currentId) loadSystemInfo();
   if (isAnalyze && S.currentId) initAnalyze();
-  console.log('[Tab] disk geçişi, isDisk:', isDisk, 'currentId:', S.currentId);
   if (isDisk    && S.currentId) loadDiskFiles();
   if (!isAnalyze) stopAnalyzeTimer();
 }
@@ -3277,13 +3297,29 @@ async function loadSystemInfo() {
 // ══════════════════════════════════════════════════════
 // CANLI LOG — SSE
 // ══════════════════════════════════════════════════════
+function selectedLogFile() {
+  const sel = document.getElementById('logFileSelect');
+  if (sel && sel.style.display !== 'none' && sel.value) return sel.value;
+  const m = S.machines.find(x => x.id === S.currentId);
+  return m ? m.logFile : null;
+}
+
+
+function onLogFileChange() {
+  if (S.logSource) {
+    disconnectLog();
+    setTimeout(connectLog, 200);
+  }
+}
+
 function connectLog() {
   if (S.logSource) return;
   const m = S.machines.find(x => x.id === S.currentId);
-  if (!m || !m.logFile) { toast('Bu makine için logFile tanımlı değil', 'warning'); return; }
+  const logFile = selectedLogFile();
+  if (!m || !logFile) { toast('Bu makine için logFile tanımlı değil', 'warning'); return; }
 
   clearLog();
-  const params = new URLSearchParams(resolveCredsFor(S.currentId));
+  const params = new URLSearchParams({ ...resolveCredsFor(S.currentId), logFile });
   const source = new EventSource(apiUrl(`/api/logs/${S.currentId}?${params}`));
   S.logSource  = source;
 
@@ -3294,7 +3330,7 @@ function connectLog() {
 
   source.onopen = () => {
     setLogDot('connected');
-    setLogText(`Bağlı — ${m.logFile}`);
+    setLogText(`Bağlı — ${logFile.split('/').pop()}`);
     const emp = document.getElementById('logEmpty');
     if (emp) emp.remove();
   };
@@ -3505,7 +3541,6 @@ function dashGoTo(machineId) {
 // DİSK TEMİZLEME
 // ══════════════════════════════════════════════════════
 async function loadDiskFiles() {
-  console.log('[Disk] loadDiskFiles çağrıldı, currentId:', S.currentId);
   if (!S.currentId) { console.warn('[Disk] currentId yok, çıkılıyor'); return; }
   const content = document.getElementById('diskContent');
   const btn     = document.getElementById('diskRefreshBtn');
@@ -3518,11 +3553,8 @@ async function loadDiskFiles() {
   try {
     const params = new URLSearchParams(resolveCredsFor(S.currentId));
     const url = apiUrl(`/api/disk/${S.currentId}/logs?${params}`);
-    console.log('[Disk] İstek URL:', url);
     const res    = await fetch(url);
-    console.log('[Disk] HTTP durum:', res.status);
     const data   = await res.json();
-    console.log('[Disk] Yanıt:', data);
     if (!data.success) {
       content.innerHTML = `<div class="disk-error"><i class="fas fa-exclamation-circle"></i> ${data.error || 'Hata'}</div>`;
       return;

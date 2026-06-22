@@ -1,6 +1,8 @@
 package com.flexcity.configmanager.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * machines.json satırı.
@@ -27,10 +29,11 @@ public class Machine {
     private String sudoUser;
 
     /**
-     * Opsiyonel: canlı log izleme için dosya yolu.
-     * Örn: /home/flexcity/java/appservers/apache-tomcat-9.0.73/logs/catalina.out
+     * Opsiyonel: canlı log izleme için dosya yolları.
+     * Tek dosya: ["/.../catalina.out"]
+     * Çoklu:    ["/.../catalina.out", "/.../localhost.log"]
      */
-    private String logFile;
+    private List<String> logFiles = new ArrayList<>();
 
     /**
      * Opsiyonel: jstack yolu (JDK kurulu değilse tam yol gerekir).
@@ -76,11 +79,17 @@ public class Machine {
         return sudoUser != null && !sudoUser.isBlank();
     }
 
-    public String getLogFile()                { return logFile; }
-    public void   setLogFile(String logFile)  { this.logFile = logFile; }
+    /** İlk log dosyasını döndürür (geriye dönük uyumluluk) */
+    public String getLogFile() {
+        return (logFiles != null && !logFiles.isEmpty()) ? logFiles.get(0) : null;
+    }
+
+    public List<String> getLogFiles()                    { return logFiles; }
+    public void         setLogFiles(List<String> files)  { this.logFiles = files != null ? files : new ArrayList<>(); }
 
     public boolean hasLogFile() {
-        return logFile != null && !logFile.isBlank();
+        return logFiles != null && !logFiles.isEmpty()
+            && logFiles.get(0) != null && !logFiles.get(0).isBlank();
     }
 
     public String getJstackPath()                  { return jstackPath; }
