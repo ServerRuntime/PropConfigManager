@@ -967,16 +967,6 @@
         <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="fas fa-plus"></i> Ekle</button>
       </div>
 
-      <!-- Terminal butonu -->
-      <div style="margin-left:auto;padding-left:12px">
-        <button id="btnOpenTerminal" onclick="openTerminal()"
-          style="background:#1a1a2e;border:1px solid #444;color:#7ee787;font-family:'Cascadia Code','Fira Code',monospace;
-                 font-size:12px;font-weight:600;display:none;align-items:center;gap:6px;padding:0 14px;height:30px;
-                 border-radius:7px;cursor:pointer;transition:background .15s;"
-          onmouseover="this.style.background='#2d2d4e'" onmouseout="this.style.background='#1a1a2e'">
-          <i class="fas fa-terminal"></i> Terminal
-        </button>
-      </div>
     </div>
 
     <!-- Tab Bar -->
@@ -996,6 +986,21 @@
       <button class="tab-btn" id="tabBtnDisk" onclick="switchTab('disk')">
         <i class="fas fa-broom"></i> Disk Temizle
       </button>
+      <!-- Terminal butonu — sağa yasla -->
+      <div id="terminalBtnWrap" style="margin-left:auto;display:none;align-items:center;padding:0 12px;">
+        <button id="btnOpenTerminal" onclick="openTerminal()"
+          style="display:flex;align-items:center;gap:7px;padding:0 16px;height:30px;
+                 background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+                 border:1px solid rgba(110,231,183,0.25);border-radius:8px;
+                 color:#6ee7b7;font-family:'Cascadia Code','Fira Code',monospace;
+                 font-size:12px;font-weight:600;cursor:pointer;
+                 box-shadow:0 0 12px rgba(110,231,183,0.08);
+                 transition:all .2s ease;"
+          onmouseover="this.style.borderColor='rgba(110,231,183,0.55)';this.style.boxShadow='0 0 18px rgba(110,231,183,0.22)';this.style.color='#a7f3d0';"
+          onmouseout="this.style.borderColor='rgba(110,231,183,0.25)';this.style.boxShadow='0 0 12px rgba(110,231,183,0.08)';this.style.color='#6ee7b7';">
+          <i class="fas fa-terminal" style="font-size:11px;opacity:0.9"></i> Terminal
+        </button>
+      </div>
     </div>
 
     <!-- Properties Tab -->
@@ -2624,14 +2629,14 @@ function svcClick(action) {
 // ── Admin UI göster/gizle ─────────────────────────────────────────────────────
 function applyAdminUI() {
   const bell     = document.getElementById('btnAdminBell');
-  const terminal = document.getElementById('btnOpenTerminal');
+  const termWrap = document.getElementById('terminalBtnWrap');
   if (S.isAdmin) {
     bell.style.display     = 'flex';
-    if (terminal) terminal.style.display = 'flex';
+    if (termWrap) termWrap.style.display = 'flex';
     refreshBellBadge();
   } else {
     bell.style.display     = 'none';
-    if (terminal) terminal.style.display = 'none';
+    if (termWrap) termWrap.style.display = 'none';
   }
 }
 
