@@ -966,6 +966,17 @@
         <button class="btn btn-outline btn-sm" onclick="openTemplates()"><i class="fas fa-bookmark"></i> Şablonlar</button>
         <button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="fas fa-plus"></i> Ekle</button>
       </div>
+
+      <!-- Terminal butonu -->
+      <div style="margin-left:auto;padding-left:12px">
+        <button id="btnOpenTerminal" onclick="openTerminal()"
+          style="background:#1a1a2e;border:1px solid #444;color:#7ee787;font-family:'Cascadia Code','Fira Code',monospace;
+                 font-size:12px;font-weight:600;display:none;align-items:center;gap:6px;padding:0 14px;height:30px;
+                 border-radius:7px;cursor:pointer;transition:background .15s;"
+          onmouseover="this.style.background='#2d2d4e'" onmouseout="this.style.background='#1a1a2e'">
+          <i class="fas fa-terminal"></i> Terminal
+        </button>
+      </div>
     </div>
 
     <!-- Tab Bar -->
@@ -2612,12 +2623,15 @@ function svcClick(action) {
 
 // ── Admin UI göster/gizle ─────────────────────────────────────────────────────
 function applyAdminUI() {
-  const bell = document.getElementById('btnAdminBell');
+  const bell     = document.getElementById('btnAdminBell');
+  const terminal = document.getElementById('btnOpenTerminal');
   if (S.isAdmin) {
-    bell.style.display = 'flex';
+    bell.style.display     = 'flex';
+    if (terminal) terminal.style.display = 'flex';
     refreshBellBadge();
   } else {
-    bell.style.display = 'none';
+    bell.style.display     = 'none';
+    if (terminal) terminal.style.display = 'none';
   }
 }
 
@@ -3453,6 +3467,19 @@ function appendLogLine(text, forceClass) {
 // ══════════════════════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════════════════════
+function openTerminal() {
+  const m = S.machines.find(x => x.id === S.currentId);
+  if (!m) return;
+  const params = new URLSearchParams({
+    machineId: m.id,
+    name:      m.name,
+    hasCreds:  m.hasCredentials ? 'true' : 'false',
+  });
+  // context-path'i otomatik al (örn. /config-machines)
+  const base = location.pathname.replace(/\/[^\/]*$/, '');
+  window.open(base + '/terminal.html?' + params.toString(), '_blank');
+}
+
 function openDashboard() {
   document.getElementById('dashOverlay').classList.remove('hidden');
   loadDashboard();

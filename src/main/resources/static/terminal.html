@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --topbar:    #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --green:     #3fb950;
+      --red:       #f85149;
+      --yellow:    #d29922;
+      --blue:      #58a6ff;
+      --purple:    #bc8cff;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 44px;
+      padding: 0 16px;
+      background: var(--topbar);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #topbar .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red    { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green  { background: #28c840; }
+
+    #machine-title {
+      margin-left: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+
+    #status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--yellow);
+      flex-shrink: 0;
+    }
+    #status-dot.connected  { background: var(--green); }
+    #status-dot.error      { background: var(--red); }
+
+    #status-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #reconnect-btn {
+      padding: 4px 12px;
+      font-size: 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      display: none;
+    }
+    #reconnect-btn:hover { background: var(--border); }
+
+    /* ── Layout ── */
+    #layout {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #terminal-container {
+      flex: 1;
+      overflow: hidden;
+      padding: 4px;
+      background: #000;
+    }
+
+    /* xterm overrides */
+    .xterm { height: 100% !important; }
+    .xterm-viewport { overflow-y: hidden !important; }
+
+    /* ── Login overlay ── */
+    #login-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #login-box {
+      background: var(--topbar);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      width: 340px;
+    }
+
+    #login-box h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    #login-box label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    #login-box input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 8px 10px;
+      margin-bottom: 14px;
+      outline: none;
+    }
+    #login-box input:focus { border-color: var(--blue); }
+
+    #login-btn {
+      width: 100%;
+      padding: 9px;
+      background: var(--blue);
+      color: #000;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #login-btn:hover { opacity: 0.9; }
+
+    #login-error {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--red);
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login overlay (kimlik bilgisi olmayan makineler için) -->
+<div id="login-overlay" style="display:none">
+  <div id="login-box">
+    <h2>🔐 SSH Kimlik Bilgileri</h2>
+    <label>Kullanıcı adı</label>
+    <input id="inp-user" type="text" placeholder="root" autocomplete="username">
+    <label>Parola</label>
+    <input id="inp-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+    <button id="login-btn" onclick="doLogin()">Bağlan</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div id="layout">
+  <div id="topbar">
+    <div class="dot dot-red"></div>
+    <div class="dot dot-yellow"></div>
+    <div class="dot dot-green"></div>
+    <span id="machine-title">Terminal</span>
+    <div id="status-dot"></div>
+    <span id="status-label">Bağlanıyor…</span>
+    <button id="reconnect-btn" onclick="reconnect()">↺ Yeniden Bağlan</button>
+  </div>
+  <div id="terminal-container"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script>
+// ── URL parametreleri ──────────────────────────────────────────────────────
+const params     = new URLSearchParams(location.search);
+const machineId  = params.get('machineId')  || '';
+const machineName= params.get('name')       || machineId;
+const hasCreds   = params.get('hasCreds')   === 'true';
+
+document.title = machineName + ' — Terminal';
+document.getElementById('machine-title').textContent = '⌨  ' + machineName;
+
+// ── xterm.js kurulum ──────────────────────────────────────────────────────
+const term = new Terminal({
+  fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace',
+  fontSize: 14,
+  lineHeight: 1.2,
+  cursorBlink: true,
+  cursorStyle: 'block',
+  theme: {
+    background: '#000000',
+    foreground: '#e6edf3',
+    cursor:     '#e6edf3',
+    black:      '#0d1117',
+    red:        '#ff7b72',
+    green:      '#3fb950',
+    yellow:     '#d29922',
+    blue:       '#58a6ff',
+    magenta:    '#bc8cff',
+    cyan:       '#39c5cf',
+    white:      '#b1bac4',
+    brightBlack:  '#6e7681',
+    brightRed:    '#ffa198',
+    brightGreen:  '#56d364',
+    brightYellow: '#e3b341',
+    brightBlue:   '#79c0ff',
+    brightMagenta:'#d2a8ff',
+    brightCyan:   '#56d4dd',
+    brightWhite:  '#f0f6fc',
+  },
+  allowProposedApi: true,
+  scrollback: 5000,
+});
+
+const fitAddon = new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
+term.open(document.getElementById('terminal-container'));
+fitAddon.fit();
+
+// ── Boyut değişince PTY'yi güncelle ───────────────────────────────────────
+const resizeObserver = new ResizeObserver(() => {
+  fitAddon.fit();
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  }
+});
+resizeObserver.observe(document.getElementById('terminal-container'));
+
+// ── WebSocket ─────────────────────────────────────────────────────────────
+let ws = null;
+
+function setStatus(state, text) {
+  const dot   = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+  const btn   = document.getElementById('reconnect-btn');
+  dot.className   = state;
+  label.textContent = text;
+  btn.style.display = (state === 'error') ? 'inline-block' : 'none';
+}
+
+function connect(username, password) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  // context-path'i otomatik türet (örn. /config-machines)
+  const basePath = location.pathname.replace(/\/[^\/]*$/, '');
+  ws = new WebSocket(`${proto}://${location.host}${basePath}/ws/terminal`);
+
+  ws.onopen = () => {
+    setStatus('', 'Kimlik doğrulanıyor…');
+    ws.send(JSON.stringify({
+      type:      'connect',
+      machineId,
+      username:  username  || undefined,
+      password:  password  || undefined,
+      cols:      term.cols,
+      rows:      term.rows,
+    }));
+  };
+
+  ws.onmessage = (evt) => {
+    const data = evt.data;
+
+    // JSON kontrol (sadece ilk karaktere bak)
+    if (data.charAt(0) === '{') {
+      try {
+        const msg = JSON.parse(data);
+        if (msg.type === 'connected') {
+          setStatus('connected', 'Bağlı — ' + msg.host);
+          return;
+        }
+        if (msg.type === 'error') {
+          setStatus('error', msg.message);
+          term.writeln('\r\n\x1b[31m✖ ' + msg.message + '\x1b[0m\r\n');
+          showLoginError(msg.message);
+          return;
+        }
+      } catch (e) { /* JSON değil, terminal çıktısı */ }
+    }
+
+    // Ham terminal verisi
+    term.write(data);
+  };
+
+  ws.onerror = () => {
+    setStatus('error', 'WebSocket hatası');
+  };
+
+  ws.addEventListener('close', (e) => {
+    // 403 = oturum açılmamış → ana sayfaya yönlendir
+    if (e.code === 1006 || e.code === 4401) {
+      term.writeln('\r\n\x1b[31m✖ Oturum açılmamış. Ana sayfaya yönlendiriliyorsunuz…\x1b[0m');
+      setTimeout(() => { location.href = '/'; }, 1500);
+    }
+  }, { once: true });
+
+  ws.onclose = (e) => {
+    if (e.code !== 1000) {
+      setStatus('error', 'Bağlantı kesildi');
+      term.writeln('\r\n\x1b[33m⚠ Bağlantı kapandı.\x1b[0m');
+    }
+  };
+
+  // Klavye girişini WebSocket'e gönder
+  term.onData((data) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(data);
+    }
+  });
+}
+
+function reconnect() {
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+  term.clear();
+  if (hasCreds) {
+    connect();
+  } else {
+    showLogin();
+  }
+}
+
+// ── Login overlay ─────────────────────────────────────────────────────────
+function showLogin() {
+  document.getElementById('login-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('inp-user').focus(), 100);
+}
+
+function hideLogin() {
+  document.getElementById('login-overlay').style.display = 'none';
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function doLogin() {
+  const u = document.getElementById('inp-user').value.trim();
+  const p = document.getElementById('inp-pass').value;
+  if (!u || !p) { showLoginError('Kullanıcı adı ve parola gerekli'); return; }
+  hideLogin();
+  connect(u, p);
+}
+
+// Enter ile login
+document.getElementById('inp-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('inp-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('inp-pass').focus();
+});
+
+// ── Başlangıç ─────────────────────────────────────────────────────────────
+if (!machineId) {
+  term.writeln('\x1b[31mHata: machineId parametresi eksik\x1b[0m');
+  setStatus('error', 'machineId eksik');
+} else if (hasCreds) {
+  connect();
+} else {
+  showLogin();
+}
+
+// Pencere focus aldığında terminal'e focus ver
+window.addEventListener('focus', () => term.focus());
+term.focus();
+</script>
+</body>
+</html>

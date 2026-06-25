@@ -30,6 +30,12 @@
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
+    <!-- Spring WebSocket (terminal için) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-websocket</artifactId>
+    </dependency>
+
     <!-- Jackson (JSON) - Spring Boot tarafından otomatik gelir -->
 
     <!-- JSch - SSH bağlantısı için (aktif fork) -->
